@@ -59,3 +59,13 @@ html[lang=zh-CN] .research-opener h2{font-family:var(--sans);font-size:30px;font
 .frequency-results p{font-size:17px;font-variant-numeric:tabular-nums;color:var(--ink);margin:4px 0 0}
 .frequency-explanation{font-size:15px;line-height:1.9;margin:0 0 24px;color:var(--ink)}
 @media(max-width:600px){.frequency-results{gap:10px}.frequency-results>div{padding-left:9px}.frequency-results strong{font-size:27px}.frequency-results b{font-size:14px}.frequency-results span{font-size:12px}.frequency-results p{font-size:13px}.frequency-explanation{font-size:14px}}
+
+/* Give the research takeaway a clear visual hierarchy. */
+.findings .research-takeaway{display:block;margin:40px 0 48px;padding:30px 34px;background:var(--soft);border:1px solid var(--rule);border-left:5px solid var(--ink);border-radius:4px}
+.findings .research-takeaway>span{display:block;font-size:22px;letter-spacing:.12em;font-weight:750;line-height:1.4;color:var(--ink);margin:0 0 18px}
+.findings .research-takeaway p{font-size:18px;line-height:1.8;margin:0;color:var(--ink)}
+.findings .research-takeaway strong{display:block;font-size:25px;line-height:1.65;margin:12px 0 18px;color:var(--ink);font-weight:700}
+.full-blog-intro{padding:32px 0 12px;border-top:2px solid var(--ink);margin-top:30px}
+.full-blog-intro h2{font-size:32px;line-height:1.35;font-weight:650;margin:0;color:var(--ink)}
+.abstract h3{font-size:18px;margin:0 0 16px;color:var(--ink)}
+@media(max-width:600px){.findings .research-takeaway{padding:23px 20px}.findings .research-takeaway>span{font-size:19px}.findings .research-takeaway p{font-size:16px}.findings .research-takeaway strong{font-size:20px}.full-blog-intro h2{font-size:26px}}

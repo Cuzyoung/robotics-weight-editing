@@ -24,8 +24,8 @@
 <main id="article"><article>
 <header class="article-header"><p class="eyebrow">ROBOTICS · WEIGHT EDITING · AUTORESEARCH</p><h1>Opus-5.5 Makes <span class="pi">π<sub>0.5</sub></span><br class="title-break"> Move Faster and Smoother</h1><p class="subtitle">权重编辑，还是 AutoResearch？</p><div class="authors">Ziyang Gong<sup>1,2</sup> · Kaifeng Zheng<sup>1,2</sup> · Yingrui Huang<sup>2</sup> · Wendi Chen<sup>1</sup> · Jiaguo Tian<sup>1,2</sup> · Minghuan Liu<sup>2</sup> · Zhenjie Yang<sup>3</sup></div><div class="affiliations"><span><sup>1</sup> Shanghai Jiao Tong University</span><span><sup>2</sup> Shanghai Innovation Institute</span><span><sup>3</sup> The University of Hong Kong</span></div><div class="article-meta"><span>Blog</span><span>·</span><span>快速阅读 · 10 分钟</span><span>/</span><span>完整阅读 · 40 分钟</span></div></header>
 
-<section class="article-introduction" id="introduction" aria-label="引言"><div class="research-opener"><p class="opener-kicker">A SMALL SETUP. A RESEARCH QUESTION.</p><h2>一个 Frontier Model，一个机器人策略。<br>两处权重修改。</h2><div class="research-facts"><div><b>One frontier model</b><span>Opus 5.5</span></div><div><b>One robot policy</b><span>π₀.₅</span></div><div><b>One GPU</b><span>RTX 4090</span></div><div><b>~111 minutes</b><span>离线自主研究</span></div><div><b>−12.0%</b><span>40 Hz 平均夹瓶子用时 · 17.99 → 15.83 s</span></div><div><b>−94.5%</b><span>30 Hz 平均 chunk 跳变 · 26.23 → 1.43 mm</span></div></div><p class="opener-note">首轮研究用时 1 小时 50 分 42 秒。全程未操控机器人、未获取在线物理反馈；不含后续真机验证与本文编写。</p></div><p>受 MIT 的 <a href="#ref-wsp">Weight-Space Programming</a> 启发，我们向 Opus 5.5 提出一个直接的要求：<strong>通过修改权重，让已训练好的机器人策略执行得更快。</strong>我们提供策略、源码、已有示范与历史执行轨迹，以及一张 RTX 4090。我们设定两项约束：不使用反向传播，不改生产推理程序。</p>
-<p>Opus 从 RoPE 出发，提出动作位置可能影响运动节奏的假设，设计实验验证，再将有效干预拟合进 Q/K 权重。它还意外发现了前缀处理中的 bug，并把修复写入时间调制权重。我们随后进行真机验证：<strong>在 30、35、40 Hz 下，编辑版均比同频率原版更快，平均用时分别缩短 4.3%、7.4%、12.0%</strong>。此前的 30 Hz 测试还显示，<strong>平均 chunk 跳变降低 94.5%</strong>。</p>
+<section class="article-introduction" id="introduction" aria-label="引言"><div class="research-opener"><p class="opener-kicker">A SMALL SETUP. A RESEARCH QUESTION.</p><h2>一个 Frontier Model，一个机器人策略。<br>两处权重修改。</h2><div class="research-facts"><div><b>One frontier model</b><span>Opus 5.5</span></div><div><b>One robot policy</b><span>π₀.₅</span></div><div><b>One GPU</b><span>RTX 4090</span></div><div><b>~111 minutes</b><span>离线自主研究</span></div><div><b>−12.0%</b><span>40 Hz 平均夹瓶子用时 · 17.99 → 15.83 s</span></div><div><b>−89.8%</b><span>30/35/40 Hz 平均 chunk 跳变 · 30.88 → 3.14 mm</span></div></div><p class="opener-note">首轮研究用时 1 小时 50 分 42 秒。全程未操控机器人、未获取在线物理反馈；不含后续真机验证与本文编写。</p></div><p>受 MIT 的 <a href="#ref-wsp">Weight-Space Programming</a> 启发，我们向 Opus 5.5 提出一个直接的要求：<strong>通过修改权重，让已训练好的机器人策略执行得更快。</strong>我们提供策略、源码、已有示范与历史执行轨迹，以及一张 RTX 4090。我们设定两项约束：不使用反向传播，不改生产推理程序。</p>
+<p>Opus 从 RoPE 出发，提出动作位置可能影响运动节奏的假设，设计实验验证，再将有效干预拟合进 Q/K 权重。它还意外发现了前缀处理中的 bug，并把修复写入时间调制权重。我们随后进行真机验证：<strong>在 30、35、40 Hz 下，编辑版均比同频率原版更快，平均用时分别缩短 4.3%、7.4%、12.0%</strong>。三档频率等权汇总后，<strong>平均 chunk 跳变从 30.88 mm 降至 3.14 mm，降低 89.8%</strong>。</p>
 <p><strong>Opus 的确展现了对参数空间的良好理解。但这些修改的成功，不仅依赖于参数编辑本身，更依赖于它发现问题、设计实验、解决问题的 AutoResearch 能力。</strong>它从机制理解中提出假设，用实验检验，在输出层拟合失败后调整方向。权重修改，是这套研究过程的结果。</p></section>
 <div class="findings video-intro"><section class="execution-showcase" id="execution" aria-labelledby="execution-title"><div class="execution-heading"><div><p class="finding-eyebrow">随后，我们在 YAM 上验证</p><h3 id="execution-title">30、35、40 Hz，提速收益一致存在。</h3></div><a href="#s3-1">完整结果 ↗</a></div>
 <div class="frequency-results" aria-label="同执行频率下的平均完成时间">
@@ -101,8 +101,9 @@ K <span class="syntax-operator">=</span> <span class="syntax-function">rope</spa
 <div class="research-takeaway"><span>AUTORESEARCH</span><p>值得关注的是它如何走到这一步：<strong>理解机制 → 提出并检验假设 → 根据失败修正方法 → 修改权重。</strong>我们要求提速，它还找到了前缀一致性的 bug。</p></div>
 </section>
 <details class="mobile-toc"><summary>文章目录</summary><nav aria-label="目录导航"><div class="toc-group"><h2 class="toc-group-title">Quick Review</h2><ol class="toc"><li class="toc-level-1"><a href="#introduction"><span></span>引言</a></li><li class="toc-level-1"><a href="#execution"><span></span>真机执行展示</a></li><li class="toc-level-1"><a href="#tldr"><span></span>Findings</a></li><li class="toc-level-2"><a href="#rtc-finding-title"><span>01</span>前缀修复</a></li><li class="toc-level-2"><a href="#rope-finding-title"><span>02</span>增大 RoPE 位置间隔</a></li><li class="toc-level-2"><a href="#qk-finding-title"><span>03</span>节奏加速</a></li></ol></div><div class="toc-group"><h2 class="toc-group-title">完整 Blog</h2><ol class="toc"><li class="toc-level-1"><a href="#abstract"><span></span>完整摘要</a></li><li class="toc-level-1"><a href="#s1"><span>1</span>我们的想法与研究条件</a></li><li class="toc-level-1"><a href="#s2"><span>2</span>Opus 5.5 的假设、验证与解法</a></li><li class="toc-level-2"><a href="#s2-1"><span>2.1</span>定位提速对象：推理等待与动作执行</a></li><li class="toc-level-2"><a href="#s2-2"><span>2.2</span>修复保留动作前缀中的 chunk 跳变</a></li><li class="toc-level-2"><a href="#s2-3"><span>2.3</span>动作节奏假设与 RoPE 位置干预</a></li><li class="toc-level-2"><a href="#s2-4"><span>2.4</span>首次尝试：仅拟合末端动作输出层</a></li><li class="toc-level-2"><a href="#s2-5"><span>2.5</span>转向注意力内部：拟合 Q/K 投影</a></li><li class="toc-level-2"><a href="#s2-6"><span>2.6</span>进一步施加参数约束，并与前缀修复合并验证</a></li><li class="toc-level-2"><a href="#s2-7"><span>2.7</span>交付与研究开销</a></li><li class="toc-level-1"><a href="#s3"><span>3</span>我们后续的实验与分析</a></li><li class="toc-level-2"><a href="#s3-1"><span>3.1</span>真机实验：任务用时与动作质量</a></li><li class="toc-level-2"><a href="#s3-2"><span>3.2</span>机制分析：哪些注意力变化保留了进度收益</a></li><li class="toc-level-2"><a href="#s3-3"><span>3.3</span>在参数空间修复前缀一致性问题</a></li><li class="toc-level-1"><a href="#closing-thoughts"><span></span>结语</a></li><li class="toc-level-1"><a href="#references"><span></span>参考文献</a></li></ol></div></nav></details>
-<details class="abstract abstract-fold" id="abstract"><summary>展开完整摘要</summary><p>当我们要求一个 Frontier Model 通过修改权重让机器人更快完成任务时，它会如何开展研究？我们向 Opus 5.5 提供预训练 <span class="math inline">\(\pi_{0.5}\)</span> 策略、源码、历史轨迹与一张 RTX 4090，要求不使用反向传播、不改变生产推理程序，并交付可回滚的独立权重。它从 RoPE 的机制出发，提出动作位置间隔可能影响预测节奏的假设，设计对照实验加以检验；在输出层拟合效果不佳后，转向注意力 Q/K 投影，将位置干预近似写入权重。它还在未被明确要求的前缀处理细节中发现问题，并通过另一项参数修改缓解 chunk 跳变。我们随后进行真机验证：放瓶子任务在 30、35、40 Hz 下的平均完成时间分别比同频率原版缩短 4.3%、7.4%、12.0%，30 Hz 下的平均 chunk 跳变降低 94.5%；注意力区域干预进一步显示，动作之间的分数变化保留了较多离线进度收益。这些结果提供了初步的有效性证据，而本文更关注形成方案的研究过程：机制理解、假设提出、实验设计与失败后的方法修正如何共同构成 Weight-Space Editing。这个案例让我们得以具体讨论以及掀开未来的一角，Frontier Model将会以什么形式参与具身领域问题的发现与解决。</p>
-</details>
+<section class="full-blog-intro" aria-labelledby="full-blog-title"><h2 id="full-blog-title">以下是完整 Blog</h2></section>
+<section class="abstract" id="abstract" aria-labelledby="abstract-title"><h3 id="abstract-title">摘要</h3><p>当我们要求一个 Frontier Model 通过修改权重让机器人更快完成任务时，它会如何开展研究？我们向 Opus 5.5 提供预训练 <span class="math inline">\(\pi_{0.5}\)</span> 策略、源码、历史轨迹与一张 RTX 4090，要求不使用反向传播、不改变生产推理程序，并交付可回滚的独立权重。它从 RoPE 的机制出发，提出动作位置间隔可能影响预测节奏的假设，设计对照实验加以检验；在输出层拟合效果不佳后，转向注意力 Q/K 投影，将位置干预近似写入权重。它还在未被明确要求的前缀处理细节中发现问题，并通过另一项参数修改缓解 chunk 跳变。我们随后进行真机验证：放瓶子任务在 30、35、40 Hz 下的平均完成时间分别比同频率原版缩短 4.3%、7.4%、12.0%，三档频率等权汇总的平均 chunk 跳变降低 89.8%；注意力区域干预进一步显示，动作之间的分数变化保留了较多离线进度收益。这些结果提供了初步的有效性证据，而本文更关注形成方案的研究过程：机制理解、假设提出、实验设计与失败后的方法修正如何共同构成 Weight-Space Editing。这个案例让我们得以具体讨论以及掀开未来的一角，Frontier Model将会以什么形式参与具身领域问题的发现与解决。</p>
+</section>
 <div class="article-content"><h2 id="s1"><span class="section-number">1 </span>我们的想法与研究条件<a aria-label="本节链接" class="heading-anchor" href="#s1">#</a></h2>
 <p>受 MIT 的 Weight-Space Programming <span class="citation" data-cites="wsp"><a href="#ref-wsp" role="doc-biblioref">[1]</a></span> 启发，我们想检验：Frontier Model 能否理解一个已训练机器人策略的参数，并通过少量修改让机器人更快地执行动作、完成任务？我们将这个问题交给 Opus 5.5，让模型根据机制与目标推导权重修改。</p>
 <p><strong>我们提供目标与环境，由 Opus 5.5 提出假设、设计实验并选择解法。</strong>环境包括一张 <strong>NVIDIA GeForce RTX 4090</strong>、已训练的 <span class="math inline">\(\pi_{0.5}\)</span> <span class="citation" data-cites="pi05"><a href="#ref-pi05" role="doc-biblioref">[2]</a></span> Training-Time RTC checkpoint、模型与推理源码、本地 demonstration 和历史机器人执行数据。它通过 Claude Code 调用工具开展离线研究。所用 demonstration 与历史执行轨迹均采自 YAM 机械臂，后续真机验证也由我们在 YAM 上完成。<strong>Opus 5.5 的自主研究全程未操控机器人，也未获取在线物理反馈，仅使用已有记录进行离线实验。</strong>它统计了<strong>136 条历史执行轨迹（5 类任务）与 154 条人类 demonstration（3 类任务）</strong>；实际编辑另从已有数据中选取 12 条 demonstration（6 类任务）和 12 条历史执行轨迹（4 类任务）。任务包括投硬币、抓移动方块、叠方块、放瓶子和按压旋转时钟。</p>
@@ -442,9 +443,50 @@ W(\alpha)=W_0+\alpha\Delta W,\qquad\Delta W=W_{\rm fit}(s=1.25)-W_0.
 </table></div>
 </div><p class="execution-backlink"><a href="#bottle-video">↑ 查看 40 Hz 六路原速执行对比</a></p>
 <p><strong>提高执行频率让两套策略都更快，但编辑版在三档相同频率下始终保留额外收益。</strong>表 <a data-reference="tab:frequency" data-reference-type="ref" href="#tab:frequency">3</a> 中，编辑版在 35 Hz 下的平均用时已经接近原版 40 Hz；两者都以 40 Hz 执行时，编辑版仍平均提前 2.15 s 完成。这支持权重编辑改变了策略生成动作的方式，其收益可以与执行频率提升叠加。这里的一致性指收益在三档频率下均存在，幅度并不相同。</p>
-<p>此前 30 Hz 的逐次记录见表 <a data-reference="tab:completion" data-reference-type="ref" href="#tab:completion">4</a>；下文的 chunk 跳变分析也对应这六条 30 Hz 记录。</p>
+<p><strong>三档频率下的 chunk 跳变均明显减小，汇总均值从 30.88 mm 降至 3.14 mm，降低 89.8%。</strong>我们沿用同一计算方式：在正式开始至第四瓶放手之间，定位计划切换前后相邻的命令 tick，经正向运动学计算 TCP 距离，取双臂较大值；先在每条轨迹内平均，再对每组 3 条轨迹等权平均。首次进入计划及经过空计划的切换不计入。该指标衡量命令的切换步长。表 <a data-reference="tab:frequency-jump" data-reference-type="ref" href="#tab:frequency-jump">4</a> 列出各频率结果，汇总行对三档频率等权，不直接平均百分比。</p>
+<div id="tab:frequency-jump">
+<p class="table-caption" id="table-caption-4"><strong>表 4. </strong>各执行频率下的平均 chunk 跳变。每个权重与频率条件包含 3 条成功轨迹，使用与完成时间相同的裁剪终点；三档合计每种权重 9 条。</p><div aria-labelledby="table-caption-4" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">频率</th>
+<th scope="col" style="text-align: right;">原版 RTC (mm)</th>
+<th scope="col" style="text-align: right;">联合编辑 (mm)</th>
+<th scope="col" style="text-align: right;">跳变降低</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">30 Hz</td>
+<td style="text-align: right;">26.23</td>
+<td style="text-align: right;">1.43</td>
+<td style="text-align: right;"><strong>94.5%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">35 Hz</td>
+<td style="text-align: right;">33.39</td>
+<td style="text-align: right;">3.09</td>
+<td style="text-align: right;"><strong>90.7%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">40 Hz</td>
+<td style="text-align: right;">33.01</td>
+<td style="text-align: right;">4.89</td>
+<td style="text-align: right;"><strong>85.2%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">三档等权平均</td>
+<td style="text-align: right;"><strong>30.88</strong></td>
+<td style="text-align: right;"><strong>3.14</strong></td>
+<td style="text-align: right;"><strong>89.8%</strong></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p><strong>更快的执行也伴随着更大的剩余跳变。</strong>编辑版在 30、35、40 Hz 下的平均 chunk 跳变从 1.43 增至 3.09、4.89 mm，相对原版的降幅由 94.5% 降至 90.7%、85.2%。因此，提高执行频率后仍明显优于同频率原版，但提速与动作连续性之间存在取舍。</p>
+<p>此前 30 Hz 的逐次完成时间见表 <a data-reference="tab:completion" data-reference-type="ref" href="#tab:completion">5</a>；表 <a data-reference="tab:real" data-reference-type="ref" href="#tab:real">6</a> 进一步报告这六条 30 Hz 记录的动作质量。</p>
 <div id="tab:completion">
-<p class="table-caption" id="table-caption-4"><strong>表 4. </strong>相同布局下 30 Hz 放瓶子任务的成功执行时间。每组 3 次，均值后为样本标准差；编号仅表示组内重复，不表示随机配对。</p><div aria-labelledby="table-caption-4" class="table-scroll" role="region" tabindex="0"><table>
+<p class="table-caption" id="table-caption-5"><strong>表 5. </strong>相同布局下 30 Hz 放瓶子任务的成功执行时间。每组 3 次，均值后为样本标准差；编号仅表示组内重复，不表示随机配对。</p><div aria-labelledby="table-caption-5" class="table-scroll" role="region" tabindex="0"><table>
 
 <thead>
 <tr>
@@ -478,9 +520,9 @@ W(\alpha)=W_0+\alpha\Delta W,\qquad\Delta W=W_{\rm fit}(s=1.25)-W_0.
 </table></div>
 </div>
 <p><strong>编辑版平均提前 0.96 s 完成，时间缩短 4.3%。</strong>这是相同布局下各三次成功执行的比较，不能据此估计成功率变化。</p>
-<p>在这六条 30 Hz 记录的同一完成区间内，我们在每次计划切换处计算相邻命令的 TCP 距离，取两臂较大值，再按每条轨迹统计并对组内三条轨迹取平均（表 <a data-reference="tab:real" data-reference-type="ref" href="#tab:real">5</a>）。原版与编辑版分别包含 60、58 次切换，首次进入计划不计入。</p>
+<p>在这六条 30 Hz 记录的同一完成区间内，我们在每次计划切换处计算相邻命令的 TCP 距离，取两臂较大值，再按每条轨迹统计并对组内三条轨迹取平均（表 <a data-reference="tab:real" data-reference-type="ref" href="#tab:real">6</a>）。原版与编辑版分别包含 60、58 次切换，首次进入计划不计入。</p>
 <div id="tab:real">
-<p class="table-caption" id="table-caption-5"><strong>表 5. </strong>同六条成功记录、同完成区间内的动作质量。各行先按轨迹计算，再对每组 3 条轨迹等权平均；“最大值”是每条轨迹最大值的组均值。</p><div aria-labelledby="table-caption-5" class="table-scroll" role="region" tabindex="0"><table>
+<p class="table-caption" id="table-caption-6"><strong>表 6. </strong>同六条成功记录、同完成区间内的动作质量。各行先按轨迹计算，再对每组 3 条轨迹等权平均；“最大值”是每条轨迹最大值的组均值。</p><div aria-labelledby="table-caption-6" class="table-scroll" role="region" tabindex="0"><table>
 
 <thead>
 <tr>
@@ -525,9 +567,9 @@ W(\alpha)=W_0+\alpha\Delta W,\qquad\Delta W=W_{\rm fit}(s=1.25)-W_0.
 </table></div>
 </div>
 <p><strong>平均 chunk 跳变降低 94.5%，末端跟踪误差基本保持。</strong>完整命令轨迹按 30 Hz 三阶差分计算的 jerk P95 也下降 77.4%；它包含切换处的改善，与仅统计 chunk 内部的离线 jerk 不同。</p>
-<p><strong>（2）投硬币：提速主要发生在夹取后的搬运阶段。</strong>我们以实测夹爪的持续闭合、张开划分动作阶段。表 <a data-reference="tab:coin-stages" data-reference-type="ref" href="#tab:coin-stages">6</a> 显示，从左手闭合到交接放开的总用时由 <strong>5.85 s 降至 4.64 s，缩短 20.7%</strong>；其中，左手闭合至右手闭合的搬运阶段缩短 <strong>22.1%</strong>，开始到夹取及交接放手的用时基本不变。</p>
+<p><strong>（2）投硬币：提速主要发生在夹取后的搬运阶段。</strong>我们以实测夹爪的持续闭合、张开划分动作阶段。表 <a data-reference="tab:coin-stages" data-reference-type="ref" href="#tab:coin-stages">7</a> 显示，从左手闭合到交接放开的总用时由 <strong>5.85 s 降至 4.64 s，缩短 20.7%</strong>；其中，左手闭合至右手闭合的搬运阶段缩短 <strong>22.1%</strong>，开始到夹取及交接放手的用时基本不变。</p>
 <div id="tab:coin-stages">
-<p class="table-caption" id="table-caption-6"><strong>表 6. </strong>相同布局下投硬币任务的分阶段用时：原版与编辑版各 3 次，表中为各组均值。阶段边界来自实测夹爪状态；开始时刻为正式执行的首个有效计划 tick。最后一行是中间两阶段的合计。</p><div aria-labelledby="table-caption-6" class="table-scroll" role="region" tabindex="0"><table>
+<p class="table-caption" id="table-caption-7"><strong>表 7. </strong>相同布局下投硬币任务的分阶段用时：原版与编辑版各 3 次，表中为各组均值。阶段边界来自实测夹爪状态；开始时刻为正式执行的首个有效计划 tick。最后一行是中间两阶段的合计。</p><div aria-labelledby="table-caption-7" class="table-scroll" role="region" tabindex="0"><table>
 
 <thead>
 <tr>
@@ -566,9 +608,9 @@ W(\alpha)=W_0+\alpha\Delta W,\qquad\Delta W=W_{\rm fit}(s=1.25)-W_0.
 </table></div>
 </div>
 <p>这六条记录的完整任务成功数为原版 <strong>0/3</strong>、编辑版 <strong>1/3</strong>。因此，这里的 20.7% 表示夹取后至交接放开的阶段用时缩短，与瓶子实验的整项任务完成时间分开报告。</p>
-<p><strong>（3）叠方块：没有观察到明显提速。</strong>两组各 3 次测试最终均成功，成功数同为 <strong>3/3</strong>。其中，原版第 2 次执行在堆叠失败后重新抓取并完成任务，因此总用时较长，为 <strong>28.27 s</strong>。表 <a data-reference="tab:stack-completion" data-reference-type="ref" href="#tab:stack-completion">7</a> 保留全部六次执行的完成时间；为比较无需重试时的执行速度，我们排除这次记录后计算均值。原版其余 2 次与编辑版 3 次的平均完成时间分别为 <strong>19.46、19.28 s</strong>，仅缩短 <strong>0.19 s（约 1.0%）</strong>，且单次用时相互重叠。</p>
+<p><strong>（3）叠方块：没有观察到明显提速。</strong>两组各 3 次测试最终均成功，成功数同为 <strong>3/3</strong>。其中，原版第 2 次执行在堆叠失败后重新抓取并完成任务，因此总用时较长，为 <strong>28.27 s</strong>。表 <a data-reference="tab:stack-completion" data-reference-type="ref" href="#tab:stack-completion">8</a> 保留全部六次执行的完成时间；为比较无需重试时的执行速度，我们排除这次记录后计算均值。原版其余 2 次与编辑版 3 次的平均完成时间分别为 <strong>19.46、19.28 s</strong>，仅缩短 <strong>0.19 s（约 1.0%）</strong>，且单次用时相互重叠。</p>
 <div id="tab:stack-completion">
-<p class="table-caption" id="table-caption-7"><strong>表 7. </strong>相同布局下叠方块任务的完成时间。从正式执行开始计时，到视频确认最终方块放开且由下方堆叠支撑为止。<span class="math inline">\(\dagger\)</span> 表示堆叠失败后重试成功：保留该次结果，但不纳入下方的速度比较均值。编号仅表示组内重复。</p><div aria-labelledby="table-caption-7" class="table-scroll" role="region" tabindex="0"><table>
+<p class="table-caption" id="table-caption-8"><strong>表 8. </strong>相同布局下叠方块任务的完成时间。从正式执行开始计时，到视频确认最终方块放开且由下方堆叠支撑为止。<span class="math inline">\(\dagger\)</span> 表示堆叠失败后重试成功：保留该次结果，但不纳入下方的速度比较均值。编号仅表示组内重复。</p><div aria-labelledby="table-caption-8" class="table-scroll" role="region" tabindex="0"><table>
 
 <thead>
 <tr>
@@ -625,7 +667,7 @@ A_{\rm ctx\text{-}only}&amp;=\operatorname{softmax}\!\left([\,L^E_{\rm ctx}\mid 
 
 \]</span><a aria-label="Equation 19" class="equation-number" href="#eq:route-interventions">(19)</a></span> <span class="math inline">\(M\)</span> 为原始注意力掩码（可读取位置为 <span class="math inline">\(0\)</span>，屏蔽位置为 <span class="math inline">\(-\infty\)</span>）。组合分数后统一归一化，再计算 <span class="math inline">\(AV\)</span> 并继续前向传播；V 投影权重保持不变。由于 softmax 分母共享，改变一块分数也可能改变另一块的概率。</p>
 <div id="tab:attention-routes">
-<p class="table-caption" id="table-caption-8"><strong>表 8. </strong>注意力路径干预对预测动作的影响，8 个输入的中位数。进度沿原路径计算，分别取第 21、37 步；所有变体均使用同一批手臂，按原版预测累计移动至少 15 mm 的条件选择。前缀修复均关闭，jerk 为 chunk 内指标。这些是离线计划的几何量，不是实测完成时间。</p><div aria-labelledby="table-caption-8" class="table-scroll" role="region" tabindex="0"><table>
+<p class="table-caption" id="table-caption-9"><strong>表 9. </strong>注意力路径干预对预测动作的影响，8 个输入的中位数。进度沿原路径计算，分别取第 21、37 步；所有变体均使用同一批手臂，按原版预测累计移动至少 15 mm 的条件选择。前缀修复均关闭，jerk 为 chunk 内指标。这些是离线计划的几何量，不是实测完成时间。</p><div aria-labelledby="table-caption-9" class="table-scroll" role="region" tabindex="0"><table>
 
 <thead>
 <tr>
@@ -675,7 +717,7 @@ A_{\rm ctx\text{-}only}&amp;=\operatorname{softmax}\!\left([\,L^E_{\rm ctx}\mid 
 </tbody>
 </table></div>
 </div>
-<p>表 <a data-reference="tab:attention-routes" data-reference-type="ref" href="#tab:attention-routes">8</a> 显示，第 37 步的进度比由完整 节奏加速编辑的 1.140 变为仅动作间干预的 1.087、仅上下文干预的 1.039。<strong>动作之间的分数干预保留了较多离线进度收益。</strong></p>
+<p>表 <a data-reference="tab:attention-routes" data-reference-type="ref" href="#tab:attention-routes">9</a> 显示，第 37 步的进度比由完整 节奏加速编辑的 1.140 变为仅动作间干预的 1.087、仅上下文干预的 1.039。<strong>动作之间的分数干预保留了较多离线进度收益。</strong></p>
 <h3 id="s3-3"><span class="section-number">3.3 </span>在参数空间修复前缀一致性问题<a aria-label="本节链接" class="heading-anchor" href="#s3-3">#</a></h3>
 <p>出人意料的是，前缀修复让我们注意到了一个在 Training-Time RTC（TT-RTC）官方公开代码中未处理的 bug：实际延迟短于预设前缀时，被最后一次积分改写的条件动作仍可能进入执行。我们首先简单介绍什么是 TT-RTC。</p>
 <p><strong>TT-RTC 要解决的是：机器人在等待下一段chunk推理完时，如何继续运动，并顺畅切换到新 chunk。</strong>图 <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a> 顶行是上一个 chunk 剩余的动作 <span class="math inline">\(A_1,A_2,\ldots\)</span>。模型从A1开始进行下一段动作的推理时，机器人继续执行当前chunk；我们把预计在等待期间执行的前 6 步 <span class="math inline">\(A_1\)</span>–<span class="math inline">\(A_6\)</span> 作为条件（prefix），让模型生成接在后面的新动作 <span class="math inline">\(B_7,B_8,\ldots\)</span>。TT-RTC 官方代码的固定延迟仿真使用相同的条件长度与延迟。以图 <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a>(a) 的 6 步为例，旧 chunk 执行到 <span class="math inline">\(A_6\)</span> 后，新结果恰好返回。程序丢弃新输出的前 6 步，从 <span class="math inline">\(B_7\)</span> 开始执行，完成 chunk 切换 <span class="citation" data-cites="trainingrtc trainingrtccode"><a href="#ref-trainingrtc" role="doc-biblioref">[4]</a>, <a href="#ref-trainingrtccode" role="doc-biblioref">[5]</a></span>。</p>
@@ -688,7 +730,7 @@ A_{\rm ctx\text{-}only}&amp;=\operatorname{softmax}\!\left([\,L^E_{\rm ctx}\mid 
 <p>图 <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a>(c) 展示了修复后的切换：即使在 <span class="math inline">\(A_4\)</span> 后拿到新结果，接下来执行的仍是原计划的 <span class="math inline">\(A_5,A_6\)</span>。Opus 5.5 的前缀修复让这些条件动作对应的采样更新量接近零，避免最后一次积分改写它们。它修改的是动作专家最后一个归一化层的时间调制权重 <code>final_norm_1.Dense_0.kernel</code>。在当前设置下，其效果几乎等价于返回前执行 <code>actions[:6] = condition[:6]</code>，即把前 6 步重新替换为给定的旧动作；Opus 通过修改参数近似实现了这一步。</p>
 <p>我们随后用相同的 36 个观测（12 个本地 demonstration、24 个历史 rollout 观测）补充对照，固定随机种子和采样步数，比较缩短条件、仅使用前缀修复、直接恢复前缀三种处理，均不包含 节奏加速编辑。</p>
 <div id="tab:prefix-e0">
-<p class="table-caption" id="table-caption-9"><strong>表 9. </strong>前缀处理对照：36 个相同观测，假设实际裁剪 4 步。切换点步长为旧计划第 4 步至新计划第 5 步的 TCP 距离，取双臂较大值，再取样本中位数。后续动作差异为第 7–38 步、12 个关节相对原版的 RMS，取样本均值。</p><div aria-labelledby="table-caption-9" class="table-scroll" role="region" tabindex="0"><table>
+<p class="table-caption" id="table-caption-10"><strong>表 10. </strong>前缀处理对照：36 个相同观测，假设实际裁剪 4 步。切换点步长为旧计划第 4 步至新计划第 5 步的 TCP 距离，取双臂较大值，再取样本中位数。后续动作差异为第 7–38 步、12 个关节相对原版的 RMS，取样本均值。</p><div aria-labelledby="table-caption-10" class="table-scroll" role="region" tabindex="0"><table>
 
 <thead>
 <tr>
@@ -721,7 +763,7 @@ A_{\rm ctx\text{-}only}&amp;=\operatorname{softmax}\!\left([\,L^E_{\rm ctx}\mid 
 </tbody>
 </table></div>
 </div>
-<p>表 <a data-reference="tab:prefix-e0" data-reference-type="ref" href="#tab:prefix-e0">9</a> 显示，相对原版的 <strong>19.16 mm</strong>，前缀权重修复与直接恢复前缀的代码修复，分别将切换点步长中位数降至 <strong>1.80、1.88 mm</strong>，后续动作变化也很小。这支持两者在前缀修复上的近似等效。缩短为 4 步条件也能改善当前对照，但不能消除实际延迟短于条件长度时的同类问题。</p>
+<p>表 <a data-reference="tab:prefix-e0" data-reference-type="ref" href="#tab:prefix-e0">10</a> 显示，相对原版的 <strong>19.16 mm</strong>，前缀权重修复与直接恢复前缀的代码修复，分别将切换点步长中位数降至 <strong>1.80、1.88 mm</strong>，后续动作变化也很小。这支持两者在前缀修复上的近似等效。缩短为 4 步条件也能改善当前对照，但不能消除实际延迟短于条件长度时的同类问题。</p>
 <p><strong>Opus 通过修改时间调制权重，使条件前缀的更新量接近零，在参数空间修复了官方公开代码未处理的这一 bug：实际延迟短于预设 prefix 时，被采样更新改写的条件动作仍可能进入执行序列。</strong>对于需要 IK、必须为延迟波动预留余量的部署，这项前缀保护尤其重要。我们没有指定这一缺陷；Opus 在研究中主动发现它，并在不改推理代码的约束下给出了参数层面的修复。</p>
 <h2 class="unnumbered" id="closing-thoughts">结语<a aria-label="本节链接" class="heading-anchor" href="#closing-thoughts">#</a></h2>
 <p>我们本以为，这会是一次 Claude 直接修改权重的 Magic：模型理解了参数，凭直觉做出几处修改，机器人便能更快地完成任务。</p>
