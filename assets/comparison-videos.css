@@ -1,19 +1,4 @@
 .cross-rate-results{grid-template-columns:repeat(2,minmax(0,1fr))}
-.combined-gain{margin:28px 0 32px;padding:26px 28px;border:1px solid var(--rule);border-top:3px solid var(--ink);border-radius:6px;background:var(--soft);color:var(--ink)}
-.combined-gain h4{margin:0 0 22px;font-size:18px;line-height:1.5;color:var(--ink)}
-.combined-gain-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);align-items:center;gap:28px}
-.combined-gain-metric>strong{display:block;font-size:clamp(48px,5vw,68px);line-height:1.1;letter-spacing:-.04em;font-weight:700;color:var(--ink)}
-.combined-gain-metric small{font-size:.48em;letter-spacing:0}
-.combined-gain-metric>span{display:block;margin-top:8px;font-size:14px;line-height:1.5;color:var(--muted)}
-.combined-gain-comparison{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:16px;align-items:center}
-.combined-gain-comparison>div>span{display:block;font-size:13px;line-height:1.5;color:var(--muted)}
-.combined-gain-comparison strong{display:block;margin-top:8px;font-size:clamp(25px,3vw,38px);line-height:1.2;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink)}
-.combined-gain-comparison small{font-size:.55em;font-weight:400}
-.combined-gain-arrow{font-size:26px;color:var(--muted)}
-.combined-gain-footer{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 24px;margin-top:24px;padding-top:16px;border-top:1px solid var(--rule);line-height:1.6}
-.combined-gain-footer>strong{font-size:15px;color:var(--ink)}
-.combined-gain-footer>span{font-size:12px;color:var(--muted)}
-@media(max-width:700px){.combined-gain{padding:22px 18px}.combined-gain-body{grid-template-columns:1fr;gap:24px}.combined-gain-comparison{gap:12px}.combined-gain h4{font-size:17px}.combined-gain-footer{margin-top:20px}.combined-gain-comparison>div>span{font-size:12px}}
 .matched-comparisons{margin:28px 0 36px;padding:22px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
 .matched-comparisons h4{margin:0 0 16px;font-size:18px}
 .comparison-rate-controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
