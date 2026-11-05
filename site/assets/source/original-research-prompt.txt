@@ -1,0 +1,403 @@
+
+# Research Task: Autonomous Weight-Space Acceleration for π₀.₅
+
+## Background
+
+We currently have two trained VLA policies:
+
+1. π₀.₅ Latest
+2. π₀.₅ Training-Time RTC
+
+Both policies can already perform some manipulation tasks on a real robot, but there is still room to improve their execution speed.
+
+I would like to explore the **Weight-Space Programming** approach recently proposed by MIT: having a frontier model directly understand and modify neural network weights to improve a VLA policy's real-world execution speed without conventional gradient-based training.
+
+Reference:
+
+https://rikiyat.github.io/blog/weight-space-programming/
+
+This is an exploratory Weight-Space Programming research project, rather than a conventional inference acceleration, runtime optimization, or fine-tuning task.
+
+**The core goal is to make the robot's actions noticeably faster while preserving the original policy's motion smoothness, stability, and task success rate.**
+
+The motion does not need to be smoother than the original, but the speed improvement must not introduce noticeable stuttering, shaking, abrupt stops, or discontinuities.
+
+## Objective
+
+**Can we directly accelerate a pretrained VLA policy through weight-space editing, without gradient-based training, while preserving its original motion smoothness and task performance?**
+
+The aim is to make the policy generate more efficient action trajectories by directly analyzing and modifying π₀.₅'s weights.
+
+Specific goals:
+
+1. **Faster Execution**: Significantly reduce the time the real robot needs to complete a task.
+2. **Preserved Smoothness**: Keep motion smoothness at least close to that of the original policy, without noticeably increasing stuttering, shaking, or action discontinuities.
+3. **Preserved Success Rate**: Preserve or improve the original task success rate as much as possible.
+4. **Minimal Weight Modification**: Modify as few parameters as possible.
+5. **No Runtime Overhead**: Introduce no additional inference modules or deployment latency.
+6. **Generalization**: Investigate whether the acceleration generalizes across tasks, initial states, and object positions.
+
+Prioritize improvements in actual robot execution speed over simply changing action magnitudes.
+
+## Phase 1: Autonomous Investigation
+
+Begin by independently exploring the current codebase, model architecture, and experiment records.
+
+Locate:
+
+- The model weights and configuration for π₀.₅ Latest.
+- The model weights and configuration for π₀.₅ Training-Time RTC.
+- Recent real-robot execution logs.
+- The corresponding robot states, action trajectories, execution times, task success rates, and videos.
+- The current policy's inference pipeline, action expert architecture, and flow matching implementation.
+- The current runtime's action chunking, RTC, action interpolation, smoothing, and execution mechanisms.
+
+Prioritize Training-Time RTC.
+
+Focus on the following questions:
+
+- Which stages account for most of the current policy's task execution time?
+- Are there unnecessary pauses, waits, or periods of slow motion?
+- Are there action paths that could be shortened?
+- Are there velocity discontinuities between action chunks?
+- Is execution speed primarily limited by the policy's predictions or by the runtime/controller?
+- Is the current policy already close to the hardware's safe motion speed limits?
+- Can execution efficiency be improved by changing the distribution of actions produced by the policy?
+
+Pay particular attention to the following:
+
+**Do not equate inference latency reduction with robot execution acceleration.**
+
+Clearly distinguish between:
+
+1. Model Inference Latency
+2. Action Chunk Generation
+3. Runtime Scheduling / Execution
+4. Robot Motion Duration
+5. End-to-end Task Completion Time
+
+Our primary goal is to improve items 4 and 5.
+
+If the main bottleneck lies in the runtime, report that honestly. However, this study should still prioritize exploring the potential of weight-space editing.
+
+## Phase 2: Safe Model Duplication
+
+Before running any experiments:
+
+1. Locate the original Training-Time RTC checkpoint.
+2. Create a separate experimental copy.
+3. Record the original checkpoint's hash, configuration, and version.
+4. Apply all weight edits only to the experimental copy.
+5. Establish mechanisms for saving, loading, comparing, and rolling back weight patches.
+6. Write all new experiment outputs to separate directories.
+
+**Never overwrite, delete, or modify any original model weights, configurations, experiment records, or data.**
+
+Do not modify π₀.₅ Latest for now.
+
+Consider transferring the approach to Latest only after making clear progress on Training-Time RTC.
+
+If loading the model could write to the original checkpoint, eliminate that risk first.
+
+## Phase 3: Weight-Space Investigation
+
+Follow the research approach described in MIT's Weight-Space Programming work:
+
+**Inspect → Hypothesize → Edit → Evaluate → Iterate**
+
+You may independently design analysis tools, including:
+
+- Weight Inspection
+- Activation Inspection
+- Action Expert Investigation
+- Flow Matching Trajectory Analysis
+- Layer-wise Sensitivity Analysis
+- Sparse Weight Editing
+- Low-rank Weight Editing
+- Forward-only Parameter Search
+- Action Distribution Analysis
+- Motion Smoothness Analysis
+
+Focus on the following questions:
+
+### 3.1 Can we identify speed-related directions in weight space?
+
+Can we identify parameter directions in the action expert or other relevant modules that affect the robot's motion speed?
+
+For example:
+
+- Do certain parameters affect action magnitudes?
+- Do certain parameters affect slow phases of a trajectory?
+- Do certain parameters affect the temporal distribution of action chunks?
+- Do certain parameters affect acceleration and deceleration behavior?
+
+Try to identify weight-space directions that change execution speed while preserving the action targets and overall trajectory shape as much as possible.
+
+### 3.2 Can we accelerate motion without introducing jerk?
+
+Can localized weight edits make the policy generate faster trajectories that remain continuous?
+
+We would like to achieve:
+
+\[
+T_{\mathrm{edited}} < T_{\mathrm{original}}
+\]
+
+while satisfying:
+
+\[
+J_{\mathrm{edited}}
+\approx
+J_{\mathrm{original}}
+\]
+
+where:
+
+- \(T\) denotes actual task completion time.
+- \(J\) denotes trajectory jerk or another measure of motion smoothness.
+
+Note that the absolute value of jerk depends on motion speed and timescale, so raw jerk values alone cannot determine whether motion is smoother.
+
+Evaluate velocity, acceleration, jerk, action discontinuities, and actual execution behavior together.
+
+### 3.3 Can we preserve task semantics while accelerating execution?
+
+The policy should still complete the original manipulation tasks correctly.
+
+For example:
+
+- Grasp locations must not shift noticeably as a result of acceleration.
+- The robot must still decelerate appropriately when approaching a target.
+- Contact with objects must not cause pronounced impacts.
+- The timing of gripper opening and closing must remain appropriate.
+- Task completion detection must not trigger prematurely.
+
+**We are aiming for more efficient motion, rather than simply multiplying every action by a factor greater than 1.**
+
+## Phase 4: Autonomous Weight Editing
+
+Independently perform weight-space editing on the separate experimental copy of Training-Time RTC.
+
+You may explore different approaches, including:
+
+- Sparse Parameter Modification
+- Low-rank Weight Updates
+- Selected Layer Editing
+- Action Expert Weight Surgery
+- Behavior-related Circuit Editing
+- Forward-only Weight-Space Search
+
+You do not need to commit to a particular method in advance.
+
+You may propose new editing strategies based on the model architecture, weight distributions, and experimental results.
+
+However, you must follow this restriction:
+
+**Do not use backpropagation, gradient descent, optimizer steps, LoRA fine-tuning, or any other gradient-based training methods.**
+
+You may:
+
+- Read model parameters.
+- Analyze activations.
+- Run forward passes.
+- Compare the action outputs of different weight patches.
+- Use gradient-free search methods.
+- Iterate independently based on experimental feedback.
+
+For every edit, record:
+
+1. The layers/modules modified.
+2. The number and percentage of parameters modified.
+3. The exact form of the weight patch.
+4. Action predictions before and after the edit.
+5. Velocity, acceleration, and jerk before and after the edit.
+6. Estimated task completion time before and after the edit.
+7. Potential effects on task success rate and motion stability.
+
+Do not assume that any particular weight-editing method will work.
+
+Failure is acceptable; use failed experiments to adjust the research direction.
+
+## Phase 5: Evaluation
+
+Prioritize validation using existing experimental records and offline data.
+
+If a simulation environment is available, you may also perform closed-loop evaluation.
+
+Do not automatically start real-robot execution without my explicit confirmation.
+
+### 5.1 Baselines
+
+Compare at least the following:
+
+1. Original Training-Time RTC
+2. Original Policy + Action Scaling
+3. Original Policy + Trajectory Time Scaling
+4. Random Weight Editing
+5. Proposed Weight-Space Editing
+
+Action Scaling and Trajectory Time Scaling are only control experiments and must not be presented as Weight-Space Programming.
+
+You may also independently add other reasonable baselines for speed optimization.
+
+### 5.2 Metrics
+
+**Execution Efficiency**
+
+- End-to-end Task Completion Time
+- Robot Motion Duration
+- Average EEF Velocity
+- Peak EEF Velocity
+- Idle / Pause Duration
+- Trajectory Length
+
+**Motion Smoothness**
+
+- Velocity Continuity
+- Acceleration Continuity
+- Jerk
+- Action Chunk Boundary Discontinuity
+- Oscillation Frequency
+- Unexpected Stops
+
+**Task Performance**
+
+- Task Success Rate
+- Final Position Error
+- Grasp / Placement Accuracy
+- Collision Rate
+- Contact Stability
+
+**Weight Editing**
+
+- Number of Modified Parameters
+- Percentage of Modified Parameters
+- Weight Patch Norm
+- Inference Latency
+- Regression on Other Tasks
+
+### 5.3 Success Criteria
+
+Prioritize exploring whether the following can be achieved:
+
+- Reduce task completion time by **20%–30%**.
+- Keep the task success rate at least as high as the original, allowing for statistical uncertainty.
+- Maintain motion smoothness close to the original.
+- Introduce no noticeable new stuttering, oscillations, or unexpected stops.
+- Do not increase model inference latency.
+- Require no additional runtime controller.
+
+20%–30% is an exploratory target and must not be treated as a mandatory requirement.
+
+Even if the result is only a stable 5%–10% speedup, retain it as long as the improvement can be shown to come from weight editing and there is no noticeable performance degradation.
+
+Without sufficient closed-loop evaluation, do not directly interpret improvements in offline action predictions as improvements in real execution speed.
+
+## Phase 6: Weight-Space Speed Control
+
+If the preceding experiments make progress, you can further explore a question with greater research value:
+
+**Can we discover a controllable speed direction in the weight space of a pretrained VLA?**
+
+Suppose there is a parameter direction:
+
+\[
+\Delta\theta_{\mathrm{speed}}
+\]
+
+Can we then use:
+
+\[
+\theta'=\theta+\alpha\Delta\theta_{\mathrm{speed}}
+\]
+
+to control the policy's motion speed?
+
+For example:
+
+| α | Expected Behavior |
+|---|---|
+| 0 | Original Policy |
+| 0.25 | Slightly Faster |
+| 0.5 | Moderately Faster |
+| 1.0 | Significantly Faster |
+
+Validate the following:
+
+1. Does speed vary approximately monotonically with α?
+2. Do different values of α preserve similar motion trajectories?
+3. Is there a noticeable trade-off between speed and smoothness?
+4. Can this direction generalize to different tasks?
+5. Is there a safe and stable range of α?
+
+Finding a controllable, reusable speed direction would have greater research value than simply obtaining a faster checkpoint.
+
+## Research Principles
+
+This is an open-ended autonomous research task.
+
+You may independently:
+
+- Read the code and model architecture.
+- Analyze weights and activations.
+- Write experimental scripts.
+- Run model inference.
+- Construct and test weight patches.
+- Design new diagnostic experiments.
+- Revise research hypotheses.
+- Try different weight-space editing methods.
+
+You do not need to ask me for confirmation at every step.
+
+However, you must ensure the following:
+
+1. Keep the original checkpoint and experimental data completely safe.
+2. Do not use gradient-based training.
+3. Do not disguise runtime optimization as weight editing.
+4. Do not disguise simple action scaling as a new research method.
+5. Do not sacrifice task success rate or motion stability to improve speed.
+6. Do not start a real robot without authorization.
+7. All conclusions must be supported by reproducible experimental evidence.
+
+Pay particular attention to the following:
+
+**Greater action magnitudes do not mean faster task completion.**
+
+If the robot's actuators have speed limits, control delays, or action saturation, simply scaling up actions may lead to more severe oscillations and task failures.
+
+You must assess whether the speed improvement holds by examining the actual execution pipeline.
+
+## Expected Deliverables
+
+The desired final deliverables are:
+
+1. A separate Training-Time RTC checkpoint with edited weights.
+2. The corresponding weight patch file and reproducible code.
+3. A comparison of action trajectories from the original and modified policies.
+4. Evaluation results for execution speed, motion smoothness, and task performance.
+5. Research conclusions on whether weight-space acceleration is effective.
+6. If it is effective, an analysis of which parameter modifications caused the speed changes.
+7. If it is ineffective, an analysis of the technical bottlenecks and directions worth exploring next.
+8. If a controllable speed direction is discovered, the corresponding parameter patch and control experiments.
+
+Do not make parameter modifications unsupported by evidence merely to deliver a modified checkpoint. If no effective result can be obtained, report that honestly.
+
+## Final Instruction
+
+**Start with Training-Time RTC.**
+
+Autonomously investigate the model architecture, weights, action generation process, and existing execution logs.
+
+Explore whether direct weight-space editing can produce faster robotic motion while preserving the original policy's smoothness and task performance.
+
+Preserve all original artifacts.
+
+Do not overwrite any existing checkpoint.
+
+Do not use gradient-based training.
+
+Do not modify the production runtime or robot controller.
+
+Iterate based on evidence, and prioritize measurable improvements over speculative claims.
+
+**The ultimate goal is not merely to make the robot move faster, but to discover whether execution speed can be directly programmed into the weight space of a pretrained VLA.**
