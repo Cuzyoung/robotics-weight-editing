@@ -22,7 +22,7 @@
   });
   const bar = document.querySelector('.reading-progress span');
   const links = [...document.querySelectorAll('.toc a')];
-  const headings = [...document.querySelectorAll('#introduction, #execution, #tldr, #rtc-finding-title, #rope-finding-title, #qk-finding-title, #abstract, .article-content h2[id], .article-content h3[id]')];
+  const headings = [...document.querySelectorAll('#introduction, #execution, #tldr, #rtc-finding-title, #rope-finding-title, #abstract, .article-content h2[id], .article-content h3[id], #original-prompt')];
   let queued = false;
   const update = () => {
     const height = document.documentElement.scrollHeight - window.innerHeight;

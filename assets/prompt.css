@@ -1,0 +1,45 @@
+.original-prompt {
+  margin: 32px 0 0;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.original-prompt > summary {
+  padding: 20px 24px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+.original-prompt[open] > summary { border-bottom: 1px solid var(--rule); }
+.prompt-content { padding: 16px 24px 24px; }
+.prompt-download { display: inline-block; margin-bottom: 12px; font-size: 13px; }
+.original-prompt pre {
+  margin: 0;
+  padding: 18px;
+  max-height: 70vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--soft);
+  color: var(--ink);
+  border-radius: 4px;
+  font: 13px/1.8 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  tab-size: 2;
+}
+.original-prompt pre code {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+@media (max-width: 600px) {
+  .original-prompt > summary { padding: 16px; font-size: 17px; }
+  .prompt-content { padding: 12px 16px 16px; }
+  .original-prompt pre { padding: 12px; font-size: 12px; }
+}
+@media print {
+  .original-prompt pre { max-height: none; overflow: visible; }
+}
