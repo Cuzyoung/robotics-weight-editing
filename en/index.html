@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opus-5.5 Makes π₀.₅ Move Faster and Smoother | Robotics Weight Editing</title>
+<meta name="description" content="How Opus 5.5 used mechanistic hypotheses, offline experiments, and closed-form weight edits to change a robot policy—and what we found on real YAM robots."><meta name="color-scheme" content="light dark">
+<script src="../assets/theme-init.js"></script>
+<link rel="canonical" href="https://cuzyoung.github.io/robotics-weight-editing/en/"><link rel="alternate" hreflang="en" href="https://cuzyoung.github.io/robotics-weight-editing/en/"><link rel="alternate" hreflang="zh-CN" href="https://cuzyoung.github.io/robotics-weight-editing/zh/">
+<meta property="og:type" content="article"><meta property="og:title" content="Opus-5.5 Makes π₀.₅ Move Faster and Smoother"><meta property="og:description" content="How Opus 5.5 used mechanistic hypotheses, offline experiments, and closed-form weight edits to change a robot policy—and what we found on real YAM robots."><meta property="og:image" content="https://cuzyoung.github.io/robotics-weight-editing/assets/bottles-poster.jpg">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../assets/style.css"><link rel="stylesheet" href="../assets/findings.css"><link rel="stylesheet" href="../assets/method-visuals.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "ScholarlyArticle", "headline": "Opus-5.5 Makes π₀.₅ Move Faster and Smoother: Weight-Space Editing or AutoResearch?", "inLanguage": "en", "author": [{"@type": "Person", "name": "Ziyang Gong"}, {"@type": "Person", "name": "Kaifeng Zheng"}, {"@type": "Person", "name": "Yingrui Huang"}, {"@type": "Person", "name": "Wendi Chen"}, {"@type": "Person", "name": "Minghuan Liu"}, {"@type": "Person", "name": "Zhenjie Yang"}], "description": "How Opus 5.5 used mechanistic hypotheses, offline experiments, and closed-form weight edits to change a robot policy—and what we found on real YAM robots."}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/method-visuals.js"></script>
+<link rel="stylesheet" href="../assets/edit-story.css">
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/navigation.css">
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],tags:'none'},svg:{fontCache:'global'},options:{enableMenu:false}};</script>
+<script defer src="../assets/vendor/tex-svg-full.js"></script>
+</head><body id="top">
+<a class="skip-link" href="#article">Skip to article</a>
+<div class="reading-progress" aria-hidden="true"><span></span></div>
+<header class="site-header"><a class="site-name" href="../">Robotics Weight Editing<span class="site-dot">.</span></a><nav class="top-nav" aria-label="Main navigation"><a href="https://github.com/Cuzyoung/robotics-weight-editing">GitHub ↗</a><div class="languages" aria-label="Language"><a class="language-link selected" lang="en" hreflang="en" href="../en/" aria-current="page">EN</a><span aria-hidden="true">/</span><a class="language-link " lang="zh-CN" hreflang="zh-CN" href="../zh/">中文</a></div><button class="theme-toggle" type="button" aria-pressed="false" aria-label="Switch to dark background" hidden><span class="theme-icon" aria-hidden="true">☾</span><span class="theme-label">Lights off</span></button></nav></header>
+<div class="page-layout">
+<aside class="sidebar"><nav aria-label="On this page"><p class="toc-label">On this page</p><ol class="toc"><li class="toc-level-1"><a href="#introduction"><span></span>Introduction</a></li><li class="toc-level-1"><a href="#execution"><span></span>Robot executions</a></li><li class="toc-level-1"><a href="#tldr"><span></span>Findings</a></li><li class="toc-level-2"><a href="#rtc-finding-title"><span>01</span>Prefix repair</a></li><li class="toc-level-2"><a href="#rope-finding-title"><span>02</span>RoPE position scale</a></li><li class="toc-level-2"><a href="#qk-finding-title"><span>03</span>Tempo acceleration</a></li><li class="toc-level-1"><a href="#abstract"><span></span>Full abstract</a></li><li class="toc-level-1"><a href="#s1"><span>1</span>Our Idea and Research Setup</a></li><li class="toc-level-1"><a href="#s2"><span>2</span>Opus 5.5’s Hypotheses, Experiments, and Solution</a></li><li class="toc-level-2"><a href="#s2-1"><span>2.1</span>Locating the Opportunity: Inference Waiting or Action Execution?</a></li><li class="toc-level-2"><a href="#s2-2"><span>2.2</span>Repairing Chunk Jumps in the Retained Action Prefix</a></li><li class="toc-level-2"><a href="#s2-3"><span>2.3</span>The Action-Tempo Hypothesis and RoPE Position Intervention</a></li><li class="toc-level-2"><a href="#s2-4"><span>2.4</span>First Attempt: Fit Only the Final Action Output Layer</a></li><li class="toc-level-2"><a href="#s2-5"><span>2.5</span>Moving Inside Attention: Fitting Q/K Projections</a></li><li class="toc-level-2"><a href="#s2-6"><span>2.6</span>Adding Parameter Constraints and Testing the Combination with Prefix Repair</a></li><li class="toc-level-2"><a href="#s2-7"><span>2.7</span>Deliverables and Research Cost</a></li><li class="toc-level-1"><a href="#s3"><span>3</span>Our Follow-up Experiments and Analysis</a></li><li class="toc-level-2"><a href="#s3-1"><span>3.1</span>Real-Robot Experiments: Task Time and Action Quality</a></li><li class="toc-level-2"><a href="#s3-2"><span>3.2</span>Mechanism Analysis: Which Attention Changes Preserve the Progress Gain?</a></li><li class="toc-level-2"><a href="#s3-3"><span>3.3</span>Repairing Prefix Consistency in Parameter Space</a></li><li class="toc-level-1"><a href="#closing-thoughts"><span></span>Closing Thoughts</a></li><li class="toc-level-1"><a href="#references"><span></span>References</a></li></ol><a class="back-to-top" href="#top">↑ Back to top</a></nav></aside>
+<main id="article"><article>
+<header class="article-header"><p class="eyebrow">ROBOTICS · WEIGHT EDITING · AUTORESEARCH</p><h1>Opus-5.5 Makes <span class="pi">π<sub>0.5</sub></span><br class="title-break"> Move Faster and Smoother</h1><p class="subtitle">Weight-Space Editing or AutoResearch?</p><div class="authors">Ziyang Gong<sup>1,2</sup> · Kaifeng Zheng<sup>1,2</sup> · Yingrui Huang<sup>2</sup> · Wendi Chen<sup>1</sup> · Minghuan Liu<sup>2</sup> · Zhenjie Yang<sup>3</sup></div><div class="affiliations"><span><sup>1</sup> Shanghai Jiao Tong University</span><span><sup>2</sup> Shanghai Innovation Institute</span><span><sup>3</sup> The University of Hong Kong</span></div><div class="article-meta"><span>Blog</span><span>·</span><span>About 34 min read</span></div></header>
+
+<section class="article-introduction" id="introduction" aria-label="Introduction"><p>We gave Opus 5.5 a question: could a few weight edits make a trained robot policy move faster and more smoothly? It received a pretrained π₀.₅ policy, source code, historical trajectories, and one RTX 4090, with <strong>no backpropagation and no changes to the production inference code</strong>.</p>
+<p>Through offline experiments, Opus found two routes: <strong>wider RoPE action-position spacing to change predicted motion, and a prefix repair to reduce jumps between action chunks</strong>. It then encoded these effects in the weights. In our subsequent real-robot tests, <strong>bottle-placement time fell by 4.3% and mean chunk jump by 94.5%</strong>. Below, we follow how it formed hypotheses, designed experiments, and revised its approach after failure.</p></section>
+<div class="findings video-intro"><section class="execution-showcase" id="execution" aria-labelledby="execution-title"><div class="execution-heading"><div><p class="finding-eyebrow">THEN WE TESTED IT ON YAM</p><h3 id="execution-title">Same task. Same layout. New weights.</h3></div><a href="#s3-1">Full results ↗</a></div>
+<div class="execution-metrics"><div><strong>−7.8<span>%</span></strong><b>Bottle time · fastest runs</b><span>22.17 s → 20.45 s</span></div><div><strong>−94.5<span>%</span></strong><b>Bottle mean chunk jump</b><span>26.23 mm → 1.43 mm</span></div></div>
+<div class="execution-labels"><span>Top row: original TT-RTC</span><span>Bottom row: combined edit</span></div>
+<figure class="video-figure" id="bottle-video"><video controls playsinline preload="metadata" poster="../assets/bottles-poster.jpg"><source src="../assets/bottles-comparison.mp4" type="video/mp4"></video><figcaption>Original-speed footage · 3 successful runs per policy · aligned at rollout start, ending at the fourth bottle release. Chunk jump measures the TCP distance between adjacent commands at a plan switch.</figcaption></figure>
+<p class="other-tasks"><b>Beyond bottles:</b> coin grasp-to-handover time decreased 20.7%; block stacking showed no clear speedup. These are initial, task-dependent gains.</p>
+</section></div>
+<section class="findings" id="tldr" aria-labelledby="tldr-title">
+<div class="finding-intro"><h2 id="tldr-title" class="findings-section-title"><span>FINDINGS /</span> What Opus found</h2>
+<p class="findings-section-summary">Two weight edits: a speedup and an unexpected bug fix.</p>
+<p class="finding-lede">A prefix bug left unhandled in the official Training-Time RTC implementation, and a RoPE intervention for action timing. Opus addressed both through new weights, keeping the production inference code unchanged.</p>
+<div class="research-context"><span>1 × RTX 4090</span><span>Offline research only</span><span>No robot interaction</span></div></div>
+<div class="finding-grid">
+<section class="finding-card rtc-card" aria-labelledby="rtc-finding-title">
+<div class="finding-index"><span>01 / PREFIX REPAIR</span><span>UNEXPECTED FINDING</span></div>
+<div class="finding-overview"><div class="finding-problem"><h3 id="rtc-finding-title">A prefix bug left unhandled<br>in official Training-Time RTC.</h3>
+<p class="finding-summary">Each denoising iteration first restores the conditioned prefix. But <strong>the final iteration updates it once more using the predicted velocity, then returns without restoring it again</strong>. Here velocity means the flow-matching update, not physical robot speed. If inference returns before the reserved prefix runs out, modified prefix actions can enter execution. The official fixed-delay example discards the whole prefix, so this issue is not exposed.</p>
+<p class="source-links">Verified official source · <a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L253-L265">Sampler</a> · <a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/eval_flow.py#L119-L126">Fixed-delay execution</a> · 9296f31d62d5</p>
+</div><div class="finding-mechanism"><div class="chunk-graphic" role="img" aria-label="Six conditioned steps, four discarded. A5 and A6 are perturbed in the returned chunk; The weight edit approximately preserves them. Schematic.">
+<div class="diagram-label">PREFIX = 6 <span>LATENCY = 4</span></div><div class="chunk-row"><span class="chunk-name">Previous chunk</span><div class="chunk-cells"><span class="step kept">A1</span><span class="step kept">A2</span><span class="step kept">A3</span><span class="step kept">A4</span><span class="step kept">A5</span><span class="step kept">A6</span><span class="step new">A7</span><span class="step new">A8</span></div></div><div class="chunk-row"><span class="chunk-name">RTC return</span><div class="chunk-cells"><span class="step expired">A1</span><span class="step expired">A2</span><span class="step expired">A3</span><span class="step expired">A4</span><span class="step drift">A5*</span><span class="step drift">A6*</span><span class="step new">B7</span><span class="step new">B8</span></div></div><div class="chunk-row"><span class="chunk-name">Repaired return</span><div class="chunk-cells"><span class="step expired">A1</span><span class="step expired">A2</span><span class="step expired">A3</span><span class="step expired">A4</span><span class="step kept">A5</span><span class="step kept">A6</span><span class="step new">B7</span><span class="step new">B8</span></div></div>
+<div class="chunk-legend"><span class="legend-expired">Discarded</span><span class="legend-drift">* Final-step drift</span></div>
+</div>
+<div class="code-equivalent"><span>CODE-FIX VIEW · BEFORE RETURN</span><a href="#e0-code">Compare original and repaired code ↓</a></div></div></div>
+<div class="edit-story" id="e0-code"><h4>See the difference in code</h4><div class="code-comparison"><section class="code-panel "><h5>Before · source excerpt (omissions marked)</h5><pre><code>guided, model_input, time <span class="syntax-operator">=</span> <span class="syntax-function">sampling_input</span>(x, target, omega, sigma, config)
+<strong class="code-focus"><span class="syntax-keyword">return</span> guided <span class="syntax-operator">-</span> <span class="syntax-function">predict_velocity</span>(model_input, time) <span class="syntax-operator">/</span> num_steps</strong>
+<span class="syntax-comment"># ...</span>
+<span class="syntax-keyword">return</span> jax.lax.<span class="syntax-function">fori_loop</span>(<span class="syntax-number">0</span>, num_steps, step, noise)</code></pre></section><section class="code-panel code-after"><h5>Code control · restore the prefix after the loop</h5><pre><code>actions <span class="syntax-operator">=</span> jax.lax.<span class="syntax-function">fori_loop</span>(<span class="syntax-number">0</span>, num_steps, step, noise)
+<span class="syntax-comment"># Hard prefix mask: restore the conditioned steps.</span>
+<strong class="code-focus"><span class="syntax-keyword">return</span> omega <span class="syntax-operator">*</span> target <span class="syntax-operator">+</span> (<span class="syntax-number">1</span> <span class="syntax-operator">-</span> omega) <span class="syntax-operator">*</span> actions</strong></code></pre></section></div><p class="edit-note">For a hard 0/1 mask, this code control is equivalent to restoring actions[:, :6] = target[:, :6]. The weight edit below approximates the same behavior by making prefix velocity nearly zero; it does not add this line at inference.</p><p class="source-links"><a href="../assets/source/continuation.txt" target="_blank" rel="noopener">continuation.py · 82–103 ↗</a></p><details class="source-detail"><summary>Actual weight-edit code · closed-form solve</summary><section class="code-panel "><h5>K = final_norm_1.Dense_0.kernel; W = action_out_proj.kernel</h5><pre><code>u <span class="syntax-operator">=</span> np.linalg.<span class="syntax-function">lstsq</span>(A, rhs, rcond<span class="syntax-operator">=</span><span class="syntax-number">1e-10</span>)[<span class="syntax-number">0</span>]
+s_star <span class="syntax-operator">=</span> <span class="syntax-operator">-</span>np.linalg.<span class="syntax-function">lstsq</span>(W.T, bo, rcond<span class="syntax-operator">=</span><span class="syntax-keyword">None</span>)[<span class="syntax-number">0</span>]
+d <span class="syntax-operator">=</span> np.<span class="syntax-function">concatenate</span>([<span class="syntax-operator">-</span><span class="syntax-number">1.</span> <span class="syntax-operator">-</span> scale0, s_star <span class="syntax-operator">-</span> shift0, np.<span class="syntax-function">zeros</span>(<span class="syntax-number">1024</span>)])
+<strong class="code-focus">dK <span class="syntax-operator">=</span> np.<span class="syntax-function">outer</span>(u, d)</strong>
+<strong class="code-focus">K2 <span class="syntax-operator">=</span> K <span class="syntax-operator">+</span> dK</strong></code></pre></section><p>A stacks time features, rhs selects the prefix, and scale0/shift0 are the original modulation. K changes; W and the inference code stay fixed.</p><a href="../assets/source/e0.txt" target="_blank" rel="noopener">derive_e0_frozen_identity.py · 60–73 ↗</a> · <a href="../assets/source/gemma.txt" target="_blank" rel="noopener">gemma.py · 128–133 ↗</a></details></div>
+<div class="weight-derivation"><h4>How Opus edited the time-modulation weight</h4><ol><li><b>Choose the zero-update target</b><p>Set scale to −1 so the action features cancel out. Choose shift = s* so the unchanged output layer produces zero.</p><span class="derivation-math">\(s^*W_{\mathrm{out}}+b_{\mathrm{out}}=0\)</span></li><li><b>Apply the change only at t = 0</b><p>Let d be target minus original modulation. Solve for u using time features cₜ: enable d for the prefix and suppress it at the ten sampling times.</p><span class="derivation-math">\(c_0u=1,\qquad c_tu=0\)</span></li><li><b>Write the increment into W</b><p>Take the outer product to obtain ΔW. Since cₜΔW = (cₜu)dᵀ, the fixed weight edit carries the time-dependent switch.</p><span class="derivation-math">\(\Delta W=ud^{\mathsf T},\qquad W\prime=W+\Delta W\)</span></li></ol></div>
+<div class="evidence-strip"><span>Offline transition distance · median</span><div><span>Original<b>19.16<small> mm</small></b></span><span>Weight repair<b>1.80<small> mm</small></b></span><span>Code fix<b>1.88<small> mm</small></b></span></div><p>36 identical inputs · approximately equivalent repair</p></div>
+<a class="finding-link" href="#s3-3">The bug, the edit, and the code control ↗</a>
+</section>
+<section class="finding-card rope-card" aria-labelledby="rope-finding-title">
+<div class="finding-index"><span>02 / RoPE POSITION SCALE</span><span>ACTION TIMING</span></div>
+<div class="finding-overview"><div class="finding-problem"><h3 id="rope-finding-title">Increase RoPE position spacing.<br>Advance farther along the path.</h3>
+<p class="finding-summary">Opus tested a change from P + i to P + si while keeping execution at 30 Hz. At s = 1.25, the median offline path progress ratio was 1.131, with 1.229 mm deviation.</p>
+</div><div class="finding-mechanism"><div class="rope-graphic" role="img" aria-label="Schematic: action-position offsets change from 0, 1, 2, 3 to 0, 1.25, 2.5, 3.75. The physical control period stays at one thirtieth of a second.">
+<div class="diagram-label">ACTION POSITION <span>RELATIVE TO P</span></div>
+<svg viewBox="0 0 400 126" aria-hidden="true"><g font-family="Arial, sans-serif" font-size="13" fill="#55635e"><text x="0" y="28">Original</text><text x="0" y="91">RoPE teacher</text></g><path d="M112 22H376 M112 85H376" stroke="#d4ded8" stroke-width="2"/>
+<g fill="#7c8982"><circle cx="112" cy="22" r="5"/><circle cx="176" cy="22" r="5"/><circle cx="240" cy="22" r="5"/><circle cx="304" cy="22" r="5"/></g>
+<g fill="#277361"><circle cx="112" cy="85" r="6"/><circle cx="192" cy="85" r="6"/><circle cx="272" cy="85" r="6"/><circle cx="352" cy="85" r="6"/></g>
+<g font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#55635e"><text x="112" y="46">0</text><text x="176" y="46">1</text><text x="240" y="46">2</text><text x="304" y="46">3</text><text x="112" y="111">0</text><text x="192" y="111">1.25</text><text x="272" y="111">2.50</text><text x="352" y="111">3.75</text></g></svg>
+<p>Same control period: 1/30 s</p></div>
+<div class="code-equivalent"><span>TEACHER INTERVENTION · PSEUDOCODE</span><code>action_positions = P + 1.25 * i</code></div></div></div>
+<div class="diagnostic-charts"><h4>Measured offline diagnostics: more spacing is not always better</h4><div class="chart-pair"><div><h5>Path progress ratio ↑</h5><svg viewBox="0 0 460 225" role="img" aria-label="Path progress ratio ↑"><path d="M55 30 V170 H430" stroke="#c5cec8" fill="none"/><text x="38" y="175">0</text><path d="M55 70 H430" stroke="#9b6b55" stroke-dasharray="4 4"/><text x="55" y="20">Dashed line: original = 1</text><rect x="75" y="84.9" width="46" height="85.1" rx="3" fill="#a7bcb3"><title>s=0.8: 0.851 ×</title></rect><text x="98" y="74.9" text-anchor="middle">0.851</text><text x="98" y="193" text-anchor="middle">0.8</text><rect x="167" y="56.900000000000006" width="46" height="113.1" rx="3" fill="#287763"><title>s=1.25: 1.131 ×</title></rect><text x="190" y="46.900000000000006" text-anchor="middle">1.131</text><text x="190" y="193" text-anchor="middle">1.25</text><rect x="259" y="52.5" width="46" height="117.5" rx="3" fill="#a7bcb3"><title>s=1.5: 1.175 ×</title></rect><text x="282" y="42.5" text-anchor="middle">1.175</text><text x="282" y="193" text-anchor="middle">1.5</text><rect x="351" y="69.10000000000001" width="46" height="100.89999999999999" rx="3" fill="#a7bcb3"><title>s=2.0: 1.009 ×</title></rect><text x="374" y="59.10000000000001" text-anchor="middle">1.009</text><text x="374" y="193" text-anchor="middle">2.0</text><text x="240" y="219" text-anchor="middle">RoPE position scale s</text></svg></div><div><h5>Path deviation (mm) ↓</h5><svg viewBox="0 0 460 225" role="img" aria-label="Path deviation (mm) ↓"><path d="M55 30 V170 H430" stroke="#c5cec8" fill="none"/><text x="38" y="175">0</text><rect x="75" y="149.382" width="46" height="20.618000000000002" rx="3" fill="#a7bcb3"><title>s=0.8: 0.793 mm</title></rect><text x="98" y="139.382" text-anchor="middle">0.793</text><text x="98" y="193" text-anchor="middle">0.8</text><rect x="167" y="138.046" width="46" height="31.954" rx="3" fill="#287763"><title>s=1.25: 1.229 mm</title></rect><text x="190" y="128.046" text-anchor="middle">1.229</text><text x="190" y="193" text-anchor="middle">1.25</text><rect x="259" y="119.69" width="46" height="50.31" rx="3" fill="#a7bcb3"><title>s=1.5: 1.935 mm</title></rect><text x="282" y="109.69" text-anchor="middle">1.935</text><text x="282" y="193" text-anchor="middle">1.5</text><rect x="351" y="48.475999999999985" width="46" height="121.52400000000002" rx="3" fill="#a7bcb3"><title>s=2.0: 4.674 mm</title></rect><text x="374" y="38.475999999999985" text-anchor="middle">4.674</text><text x="374" y="193" text-anchor="middle">2.0</text><text x="240" y="219" text-anchor="middle">RoPE position scale s</text></svg></div></div><p>Direct RoPE intervention · 58 valid observations out of 60 · median across observations. Green marks the selected s = 1.25. These are predicted-path metrics, not real-robot completion speed.</p></div>
+<a class="finding-link" href="#tab:rope-diagnostic">Full RoPE position-scale comparison ↗</a>
+</section>
+<section class="finding-card qk-card" aria-labelledby="qk-finding-title">
+<div class="finding-index"><span>03 / TEMPO ACCELERATION</span><span>MECHANISM → WEIGHTS</span></div>
+<div class="finding-problem"><h3 id="qk-finding-title">Fit the RoPE effect<br>into Q/K weights.</h3>
+<p class="finding-summary">The position intervention becomes a teacher. Opus constructs rotated Q/K targets and solves for new projection weights in layers 1–17, so the candidate can retain the original inference code and position rule.</p></div>
+<div class="edit-story" id="qk-code"><h4>Position intervention → equivalent rotation → fitted weights</h4><p>The following is simplified pseudocode. Rotating pre-RoPE Q/K by the extra angle is algebraically equivalent to the teacher position change; a shared fitted projection only approximates that rotation.</p><div class="code-comparison three"><section class="code-panel "><h5>Original</h5><pre><code>q <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wq
+k <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wk
+Q <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(q, P <span class="syntax-operator">+</span> i)
+K <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(k, P <span class="syntax-operator">+</span> i)</code></pre></section><section class="code-panel code-after"><h5>Teacher · position-rule change</h5><pre><code>q <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wq
+k <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wk
+<strong class="code-focus">Q <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(q, P <span class="syntax-operator">+</span> <span class="syntax-number">1.25</span> <span class="syntax-operator">*</span> i)</strong>
+<strong class="code-focus">K <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(k, P <span class="syntax-operator">+</span> <span class="syntax-number">1.25</span> <span class="syntax-operator">*</span> i)</strong></code></pre></section><section class="code-panel code-after"><h5>Candidate · only new weights</h5><pre><code><strong class="code-focus">q <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wq_fit   <span class="syntax-comment"># new weights</span></strong>
+<strong class="code-focus">k <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wk_fit   <span class="syntax-comment"># new weights</span></strong>
+Q <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(q, P <span class="syntax-operator">+</span> i)  <span class="syntax-comment"># original positions</span>
+K <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(k, P <span class="syntax-operator">+</span> i)</code></pre></section></div><p class="source-links"><a href="../assets/source/qk.txt" target="_blank" rel="noopener">e2b_qk_rotation.py · 147–187 ↗</a> · <a href="#tab:rope-diagnostic">Full diagnostic table</a></p></div>
+<div class="weight-derivation"><h4>How Opus constructed Y and fitted ΔW</h4><ol><li><b>Collect hidden features X</b><p>Run local demonstrations and historical rollout observations through the model. Stack the hidden features entering each Q/K projection into X.</p><span class="derivation-math">\(\text{Q/K}_0=XW_0\)</span></li><li><b>Rotate the original Q/K to obtain Y</b><p>For action i, apply an extra RoPE rotation for position offset 0.25i to the original projection of the same feature. This supplies the gap from P+i to P+1.25i. Stack the target vectors as rows of Y.</p><span class="derivation-math">\(y_i=R(0.25i)\bigl(W_0^{\mathsf T}x_i\bigr)\)</span></li><li><b>Fit W, then subtract the original</b><p>Fit XW to Y, regularizing toward W₀. Apply this separately to Q and K in layers 1–17; inference keeps the original RoPE.</p><span class="derivation-math">\(\begin{aligned}W_{\mathrm{fit}}=\arg\min_W\bigl[&\|XW-Y\|_F^2\\&+\lambda\|W-W_0\|_F^2\bigr]\end{aligned}\)</span></li></ol><div class="derivation-result"><span class="derivation-math">\(\Delta W=W_{\mathrm{fit}}-W_0,\qquad W\prime=W_0+\Delta W\)</span></div><p class="target-note">Y comes from a known rotation, not human-labeled faster actions.</p></div>
+<div class="evidence-strip"><span>Offline path progress · original = 1</span><div><span>Original<b>1.000<small>×</small></b></span><span>Tempo acceleration only<b>1.199<small>×</small></b></span><span>Deviation<b>1.08<small> mm</small></b></span></div><p>35 valid test inputs · predicted path, not task speed</p></div>
+<a class="finding-link" href="#s2-5">From RoPE intervention to fitted weights ↗</a>
+</section></div>
+<div class="research-takeaway"><span>AUTORESEARCH</span><p>The striking part is how it got there: <strong>find a mechanism → test a hypothesis → revise after failure → edit the weights.</strong> We asked for speed; it also found a prefix-consistency bug.</p></div>
+</section>
+<details class="mobile-toc"><summary>On this page</summary><nav aria-label="Table of contents"><ol class="toc"><li class="toc-level-1"><a href="#introduction"><span></span>Introduction</a></li><li class="toc-level-1"><a href="#execution"><span></span>Robot executions</a></li><li class="toc-level-1"><a href="#tldr"><span></span>Findings</a></li><li class="toc-level-2"><a href="#rtc-finding-title"><span>01</span>Prefix repair</a></li><li class="toc-level-2"><a href="#rope-finding-title"><span>02</span>RoPE position scale</a></li><li class="toc-level-2"><a href="#qk-finding-title"><span>03</span>Tempo acceleration</a></li><li class="toc-level-1"><a href="#abstract"><span></span>Full abstract</a></li><li class="toc-level-1"><a href="#s1"><span>1</span>Our Idea and Research Setup</a></li><li class="toc-level-1"><a href="#s2"><span>2</span>Opus 5.5’s Hypotheses, Experiments, and Solution</a></li><li class="toc-level-2"><a href="#s2-1"><span>2.1</span>Locating the Opportunity: Inference Waiting or Action Execution?</a></li><li class="toc-level-2"><a href="#s2-2"><span>2.2</span>Repairing Chunk Jumps in the Retained Action Prefix</a></li><li class="toc-level-2"><a href="#s2-3"><span>2.3</span>The Action-Tempo Hypothesis and RoPE Position Intervention</a></li><li class="toc-level-2"><a href="#s2-4"><span>2.4</span>First Attempt: Fit Only the Final Action Output Layer</a></li><li class="toc-level-2"><a href="#s2-5"><span>2.5</span>Moving Inside Attention: Fitting Q/K Projections</a></li><li class="toc-level-2"><a href="#s2-6"><span>2.6</span>Adding Parameter Constraints and Testing the Combination with Prefix Repair</a></li><li class="toc-level-2"><a href="#s2-7"><span>2.7</span>Deliverables and Research Cost</a></li><li class="toc-level-1"><a href="#s3"><span>3</span>Our Follow-up Experiments and Analysis</a></li><li class="toc-level-2"><a href="#s3-1"><span>3.1</span>Real-Robot Experiments: Task Time and Action Quality</a></li><li class="toc-level-2"><a href="#s3-2"><span>3.2</span>Mechanism Analysis: Which Attention Changes Preserve the Progress Gain?</a></li><li class="toc-level-2"><a href="#s3-3"><span>3.3</span>Repairing Prefix Consistency in Parameter Space</a></li><li class="toc-level-1"><a href="#closing-thoughts"><span></span>Closing Thoughts</a></li><li class="toc-level-1"><a href="#references"><span></span>References</a></li></ol></nav></details>
+<details class="abstract abstract-fold" id="abstract"><summary>Read the full abstract</summary><p>How would a frontier model make a robot faster through weight editing? We gave Opus 5.5 a pretrained <span class="math inline">\(\pi_{0.5}\)</span> policy, source code, historical trajectories, and one RTX 4090, requiring a reversible checkpoint without backpropagation or production-code changes. It hypothesized that RoPE action-position spacing influences predicted motion, tested this through controlled experiments, and fitted Q/K projections to approximate the intervention after output-layer fitting failed to generalize. It also discovered an unrequested prefix-handling issue and derived a separate weight edit to reduce chunk jumps. In our subsequent real-robot tests, bottle-placement time decreased by 4.3% and mean chunk jump by 94.5%. Attention-region interventions showed that action-to-action score changes retained much of the offline progress gain. Beyond these initial performance gains, we examine the research process: mechanism understanding, hypothesis formation, experiments, and revision after failure. This case offers a concrete view of how frontier models might participate in discovering and solving problems in embodied intelligence.</p>
+</details>
+<div class="article-content"><h2 id="s1"><span class="section-number">1 </span>Our Idea and Research Setup<a aria-label="Link to section" class="heading-anchor" href="#s1">#</a></h2>
+<p>Inspired by MIT’s Weight-Space Programming <span class="citation" data-cites="wsp"><a href="#ref-wsp" role="doc-biblioref">[1]</a></span>, we asked whether a frontier model could understand the parameters of a trained robot policy and, through a small number of edits, make the robot execute actions and complete tasks faster. We gave this problem to Opus 5.5, asking it to derive weight changes from mechanisms and objectives.</p>
+<p><strong>We provided the objective and environment; Opus 5.5 proposed hypotheses, designed experiments, and selected a solution.</strong> It worked through Claude Code with one <strong>NVIDIA GeForce RTX 4090</strong>, a trained <span class="math inline">\(\pi_{0.5}\)</span> <span class="citation" data-cites="pi05"><a href="#ref-pi05" role="doc-biblioref">[2]</a></span> Training-Time RTC checkpoint, model and inference code, and recorded YAM demonstrations and rollouts. <strong>Opus never operated the robot or received online physical feedback; its research used only existing recordings.</strong> We conducted the subsequent physical tests on YAM arms. It surveyed <strong>136 historical rollouts (5 task types) and 154 human demonstrations (3 task types)</strong>. For editing, it selected a separate set of 12 demonstrations (6 task types) and 12 rollouts (4 task types) from the available data, covering coin insertion, moving-block picking, stacking, bottle placement, and clock manipulation.</p>
+<p>We prohibited backpropagation, gradient-based optimizers, and LoRA, while allowing forward-pass experiments and closed-form fitting. We asked it to change as few parameters as possible, preserve the production inference and control programs, and deliver an independent checkpoint that could be rolled back. A 20%–30% reduction in task time was the exploratory target; a stable 5%–10% improvement would also be meaningful. It needed to check smoothness and cross-task behavior, and compare against the original policy, action-amplitude scaling, trajectory time scaling, and random weight edits.</p>
+<p>The resulting method developed through mechanistic hypotheses, controlled experiments, and revisions. <strong>We are interested not only in performance after editing, but also in how Opus identified problems, tested explanations, and changed direction after failure.</strong> Section 2 presents its research process; Section 3 reports our additional real-robot and mechanistic experiments. We close by considering what this case suggests about AutoResearch in robotics.</p>
+<p>Here, an action chunk is a policy prediction of 50 future action steps. Each step contains 12 joint targets for the two arms and 2 gripper targets, at 30 Hz. We execute 32 steps per cycle. When updating the plan, the first 6 steps of the old plan serve as conditioning actions, or the RTC prefix. We call an abrupt change in target position at a plan switch a chunk jump; this describes a change in commands, not an instantaneous movement of the physical arm.</p>
+<h2 id="s2"><span class="section-number">2 </span>Opus 5.5’s Hypotheses, Experiments, and Solution<a aria-label="Link to section" class="heading-anchor" href="#s2">#</a></h2><aside class="method-intro"><h3>The idea before the equations</h3><p>We call the two weight edits <b>Prefix Repair</b> and <b>Tempo Acceleration</b>, and their combination the <b>Combined Edit</b>.</p><ol><li><b>Find what takes time</b><p>Model inference finishes before the current action chunk runs out. The question becomes: can the generated actions advance farther along the same route in the same time?</p></li><li><b>Repair the handoff first · prefix repair</b><p>Think of two overlapping strips of action instructions. Their shared steps should agree. The final sampling update perturbs the reserved prefix; the weight edit suppresses that update so the overlap approximately lines up again.</p></li><li><b>Test a different internal spacing · RoPE</b><p>Think of action positions as numbered marks on a ruler inside the model. Spread these marks apart while the robot still receives commands at 30 Hz. This changes how attention reads the sequence; whether it produces faster actions must be tested.</p></li><li><b>Transfer the useful effect into weights · tempo acceleration</b><p>After the direct position intervention improves offline progress, use its extra Q/K rotation as a fitting target. Solve for new projection weights, then check generated actions on held-out observations. Researchers subsequently test the combined edits on the robot.</p></li></ol></aside>
+<h3 id="s2-1"><span class="section-number">2.1 </span>Locating the Opportunity: Inference Waiting or Action Execution?<a aria-label="Link to section" class="heading-anchor" href="#s2-1">#</a></h3>
+<p>Opus 5.5 first checked whether task duration was dominated by waiting for model inference. It read the deployment configuration and compared inference times, action commands, and measured joint states across 136 historical RTC trajectories. Each inference took approximately 105–109 ms, substantially less than the roughly 1.073 s plan-update period. The recordings also showed no obvious idle intervals dominated by waiting for the next inference. It then used action speeds and pauses in 154 demonstrations as a reference and turned to the actions generated by the policy.</p>
+<p>This diagnosis focused the investigation on <strong>saving time during action execution</strong>. Opus 5.5 pursued two lines of inquiry: first, whether anomalies at old-to-new chunk transitions originated in generation; second, whether subsequent actions could advance farther while preserving the task path. The first led to prefix repair, and the second to tempo acceleration through a Q/K projection edit; we refer to their combination as the combined edit.</p>
+<h3 id="s2-2"><span class="section-number">2.2 </span>Repairing Chunk Jumps in the Retained Action Prefix<a aria-label="Link to section" class="heading-anchor" href="#s2-2">#</a></h3>
+<p>By comparing model outputs with executed commands, Opus 5.5 found that the first 6 steps were supplied as conditioning actions, but the generated outputs deviated from those old actions. Deployment usually discarded only the first 4 expired steps, so deviations in steps 5 and 6 entered execution. The cause was that the prefix was not restored again after the final flow-matching integration step.</p>
+<p><strong>Opus 5.5 computed a weight-update matrix <span class="math inline">\(\Delta W\)</span> and saved <span class="math inline">\(W'=W+\Delta W\)</span> in a new checkpoint.</strong> <strong>Opus edited <span class="math inline">\(W\)</span>, the linear-layer weight mapping time features to scale and shift in the final normalization layer</strong> (Figure <a data-reference="fig:e0-location" data-reference-type="ref" href="#fig:e0-location">1</a>; <code>final_norm_1.Dense_0.kernel</code>). The <span class="math inline">\(1024\times3072\)</span> matrix <span class="math inline">\(\Delta W\)</span> specifies an increment for every weight. The goal is nearly zero prefix updates while preserving outputs at other sampling times, with inference code unchanged.</p>
+<figure data-latex-placement="ht" id="fig:e0-location">
+<a class="figure-link" href="../assets/e0-location.png" rel="noopener" target="_blank" title="Open full-size figure"><img alt="Prefix repair changes only the green time-projection layer to \(W'\) . Time features \(c_t\) modulate action features \(x_t\) at final normalization; the action-output projection stays fixed." decoding="async" loading="lazy" src="../assets/e0-location.png"/></a>
+<figcaption><strong>Figure 1. </strong>Prefix repair changes only the green time-projection layer to <span class="math inline">\(W'\)</span>. Time features <span class="math inline">\(c_t\)</span> modulate action features <span class="math inline">\(x_t\)</span> at final normalization; the action-output projection stays fixed.</figcaption>
+</figure>
+<p><strong>The original time-modulation process is shown in Figure <a data-reference="fig:e0-location" data-reference-type="ref" href="#fig:e0-location">1</a>, using <span class="math inline">\(W\)</span> at the highlighted location.</strong> The prefix uses generation-time condition <span class="math inline">\(t=0\)</span>; other actions use <span class="math inline">\(1.0,0.9,\ldots,0.1\)</span>. This is not physical execution time. Time encoding and <code>time_mlp_in/out</code> map <span class="math inline">\(t\)</span> to 1024-dimensional features <span class="math inline">\(c_t\)</span>; <span class="math inline">\(c_0\)</span> is not zero. For one action token, let <span class="math inline">\(x_t\)</span> be its hidden features after 18 Transformer blocks, and <span class="math inline">\(m_t\)</span> the three groups of modulation values from the time branch. The original model adjusts <span class="math inline">\(x_t\)</span> using scale and shift: <span class="equation" id="eq:e0-modulation"><span class="math display">\[
+\begin{aligned}
+m_t&amp;=[\mathrm{scale}_t,\mathrm{shift}_t,\mathrm{gate}_t]=c_tW+b,\\
+x_{\mathrm{out},t}&amp;=\operatorname{RMSNorm}(x_t)\odot(1+\mathrm{scale}_t)+\mathrm{shift}_t,\\
+v_t&amp;=x_{\mathrm{out},t}W_{\mathrm{out}}+b_{\mathrm{out}}.
+\end{aligned}
+
+\]</span><a aria-label="Equation 1" class="equation-number" href="#eq:e0-modulation">(1)</a></span> These are existing model operations, which Opus used to derive the edit. Here, <span class="math inline">\(\odot\)</span> means elementwise multiplication; gate is unused. The linear layer <code>action_out_proj</code>, with <span class="math inline">\(W_{\mathrm{out}},b_{\mathrm{out}}\)</span>, produces the sampling update <span class="math inline">\(v_t\)</span>; it is not the time MLP. The prefix repair replaces only <span class="math inline">\(W\)</span>, preserving <span class="math inline">\(b,W_{\mathrm{out}},b_{\mathrm{out}}\)</span>.</p>
+<p><strong>Step 1: choose targets that give zero prefix updates.</strong> Primes denote edited quantities. Opus targeted scale <span class="math inline">\(-\mathbf1\)</span> and solved for the minimum-norm <span class="math inline">\(s^*\)</span> that gives zero after the linear action output layer: <span class="equation" id="eq:e0-zero"><span class="math display">\[
+\begin{aligned}
+\mathrm{scale}'_0&amp;=-\mathbf1,\qquad\mathrm{shift}'_0=s^*,\qquad s^*W_{\mathrm{out}}+b_{\mathrm{out}}=0,\\
+x'_{\mathrm{out},0}&amp;=\operatorname{RMSNorm}(x_0)\odot\mathbf0+s^*=s^*,\qquad v'_0=0.
+\end{aligned}
+
+\]</span><a aria-label="Equation 2" class="equation-number" href="#eq:e0-zero">(2)</a></span> The Transformer output <span class="math inline">\(x_0\)</span> need not be zero: the target scale removes its influence, while the target shift makes the final features equal to <span class="math inline">\(s^*\)</span> and cancels the output bias.</p>
+<p><strong>Step 2: compute the target modulation change.</strong> Subtracting original values from targets gives <span class="math inline">\(d^{\mathsf T}\)</span>; adding it back verifies the desired result: <span class="equation" id="eq:e0-rank-one"><span class="math display">\[
+\begin{aligned}
+d^{\mathsf T}&amp;=[-\mathbf1-\mathrm{scale}_0,\ s^*-\mathrm{shift}_0,\ \mathbf0],\\
+m_0+d^{\mathsf T}&amp;=[\mathrm{scale}_0,\mathrm{shift}_0,\mathrm{gate}_0]+d^{\mathsf T}
+=[-\mathbf1,s^*,\mathrm{gate}_0].
+\end{aligned}
+
+\]</span><a aria-label="Equation 3" class="equation-number" href="#eq:e0-rank-one">(3)</a></span> <strong>Step 3: solve for <span class="math inline">\(u\)</span> to apply the increment only to the prefix.</strong> Opus stacked the time features at the ten sampling times and at the prefix condition <span class="math inline">\(t=0\)</span> as rows of <span class="math inline">\(A\in\mathbb R^{11\times1024}\)</span>. It sought 1024 coefficients <span class="math inline">\(u\)</span> giving <span class="math inline">\(c_0u=1\)</span> for the prefix and <span class="math inline">\(c_tu=0\)</span> at the ten other times. Stacking these targets into <span class="math inline">\(r\)</span> yields <span class="equation" id="eq:e0-u-solve"><span class="math display">\[
+\begin{aligned}
+A&amp;=\operatorname{stack}_{\mathrm{rows}}(c_0,c_{1.0},c_{0.9},\ldots,c_{0.1}),\qquad r=(1,0,\ldots,0)^{\mathsf T},\\
+u&amp;=\underset{z}{\operatorname{argmin}}\,\|Az-r\|_2^2\qquad\text{(minimum-norm solution)}.
+\end{aligned}
+
+\]</span><a aria-label="Equation 4" class="equation-number" href="#eq:e0-u-solve">(4)</a></span> A dot product of 1 adds the full change <span class="math inline">\(d^{\mathsf T}\)</span> to the prefix; a dot product of 0 adds nothing. Thus <span class="math inline">\(c_0\)</span> comes from the original model, whereas <span class="math inline">\(u\)</span> comes from this solve.</p>
+<p><strong>Write the weights and check the effect.</strong> The desired change after applying the new weights is <span class="math inline">\((c_tu)d^{\mathsf T}\)</span>. By associativity, this equals <span class="math inline">\(c_t(ud^{\mathsf T})\)</span>, so <span class="math inline">\(ud^{\mathsf T}\)</span> can be added directly to the weight matrix: <span class="equation" id="eq:e0-selective"><span class="math display">\[
+\begin{aligned}
+&amp;\Delta W=ud^{\mathsf T},\qquad W'=W+\Delta W,\qquad W'_{ij}=W_{ij}+u_i d_j,\\
+&amp;c_t\Delta W=c_t(ud^{\mathsf T})=(c_tu)d^{\mathsf T},\\
+&amp;m'_t=c_t(W+\Delta W)+b=m_t+(c_tu)d^{\mathsf T}.
+\end{aligned}
+
+\]</span><a aria-label="Equation 5" class="equation-number" href="#eq:e0-selective">(5)</a></span> Row <span class="math inline">\(i\)</span> of <span class="math inline">\(\Delta W\)</span> is <span class="math inline">\(u_i d^{\mathsf T}\)</span>: all rows are scaled copies of the same vector, leaving only one independent direction. This is a rank-one update.</p>
+<p>Across 36 demonstration observations and 24 historical execution observations, the prefix joint error fell from approximately 0.095 rad to <span class="math inline">\(4.49\times10^{-4}\)</span> rad. The maximum change in subsequent actions was approximately 0.0034 rad, with almost no change in path progress. Opus 5.5 therefore retained this prefix repair and continued searching for a speedup method. Our code audit and experiments on this issue appear in Section <a data-reference="sec:prefix-audit" data-reference-type="ref" href="#s3-3">3.3</a>.</p>
+<h3 id="s2-3"><span class="section-number">2.3 </span>The Action-Tempo Hypothesis and RoPE Position Intervention<a aria-label="Link to section" class="heading-anchor" href="#s2-3">#</a></h3>
+<p>The prefix repair did not make subsequent actions advance faster. While reading the model code, Opus 5.5 proposed a hypothesis for acceleration: “My leading hypothesis is that action timing depends on RoPE positions.” We elaborate on this hypothesis as follows: <strong>the model may have learned an implicit relationship between action-position spacing and action displacement; increasing the internal position spacing while keeping the physical control interval unchanged may increase useful displacement over the same duration.</strong></p>
+<p>Figure <a data-reference="fig:rope-position" data-reference-type="ref" href="#fig:rope-position">2</a> summarizes the intervention: change the coordinates used to read the action sequence, then test whether predicted actions advance faster.</p>
+<figure data-latex-placement="htbp" id="fig:rope-position"><div class="rope-demo" hidden="">
+<div class="mechanism-heading"><b>Stretch the positions. Keep the clock.</b><span>SCHEMATIC</span></div>
+<div class="rope-demo-visuals">
+<svg aria-label="Internal action positions expand; execution times do not change." class="position-timeline" role="img" viewbox="0 0 555 245">
+<path class="axis" d="M 140 43 H 540 M 140 104 H 540 M 270 170 H 540"></path>
+<rect class="context-zone" height="132" rx="8" width="126" x="132" y="8"></rect><g class="context-point"><circle cx="150" cy="43" r="5"></circle><text text-anchor="middle" x="150" y="66">…</text></g><g class="context-point"><circle cx="200" cy="43" r="5"></circle><text text-anchor="middle" x="200" y="66">P−2</text></g><g class="context-point"><circle cx="240" cy="43" r="5"></circle><text text-anchor="middle" x="240" y="66">P−1</text></g><g class="context-point"><circle cx="150" cy="104" r="5"></circle><text text-anchor="middle" x="150" y="127">…</text></g><g class="context-point"><circle cx="200" cy="104" r="5"></circle><text text-anchor="middle" x="200" y="127">P−2</text></g><g class="context-point"><circle cx="240" cy="104" r="5"></circle><text text-anchor="middle" x="240" y="127">P−1</text></g><path class="context-boundary" d="M 264 8 V 143"></path><text class="context-label" text-anchor="middle" x="195" y="227">Context · fixed</text><text class="context-label" text-anchor="middle" x="400" y="227">Action positions · stretched</text>
+<text x="0" y="48">Original P + i</text><g class="base-points"><circle cx="280" cy="43" r="5"></circle><text text-anchor="middle" x="280" y="27">a0</text><circle cx="345" cy="43" r="5"></circle><text text-anchor="middle" x="345" y="27">a1</text><circle cx="410" cy="43" r="5"></circle><text text-anchor="middle" x="410" y="27">a2</text><circle cx="475" cy="43" r="5"></circle><text text-anchor="middle" x="475" y="27">a3</text></g>
+<text x="0" y="109">Teacher P + si</text><g class="edited-points"><g data-position="0"><circle cy="104" r="6"></circle><text text-anchor="middle" y="88">a0</text><text class="coordinate" text-anchor="middle" y="129"></text></g><g data-position="1"><circle cy="104" r="6"></circle><text text-anchor="middle" y="88">a1</text><text class="coordinate" text-anchor="middle" y="129"></text></g><g data-position="2"><circle cy="104" r="6"></circle><text text-anchor="middle" y="88">a2</text><text class="coordinate" text-anchor="middle" y="129"></text></g><g data-position="3"><circle cy="104" r="6"></circle><text text-anchor="middle" y="88">a3</text><text class="coordinate" text-anchor="middle" y="129"></text></g></g>
+<text x="0" y="175">Execution</text><g class="clock-ticks"><path d="M 280 165 v 10"></path><text text-anchor="middle" x="280" y="194">0/30 s</text><path d="M 345 165 v 10"></path><text text-anchor="middle" x="345" y="194">1/30 s</text><path d="M 410 165 v 10"></path><text text-anchor="middle" x="410" y="194">2/30 s</text><path d="M 475 165 v 10"></path><text text-anchor="middle" x="475" y="194">3/30 s</text></g>
+</svg>
+<svg aria-label="Extra rotation of one Q or K channel pair." class="rotation-pair" role="img" viewbox="0 0 240 215">
+<text text-anchor="middle" x="120" y="19">One Q/K channel pair</text>
+<circle class="unit-circle" cx="120" cy="108" r="62"></circle>
+<path class="axis" d="M 45 108 H 195 M 120 33 V 183"></path>
+<path class="base-ray" d="M 120 108 L 178.24 86.74"></path>
+<path class="angle-arc"></path><path class="edit-ray"></path>
+<circle class="edit-tip" r="4"></circle>
+<text class="rotation-value" text-anchor="middle" x="120" y="207">Δθ = 0.75 rad</text>
+</svg></div>
+<div class="rope-status"><span>Position scale s = <output>1.00</output></span><span>i = 3 · m = 0</span><span>30 Hz · unchanged</span></div>
+<p class="rope-demo-note">Blue: original direction. Green: extra rotation for action i = 3, channel pair m = 0. Δθ = (s − 1)iωₘ. The original ray is drawn at an arbitrary angle; vector length stays fixed. Different channel pairs rotate at different rates. This is a representation inside attention, not the rotation of a robot joint.</p>
+<div class="rope-weight-story"><b>How does this become a weight edit?</b><p>First, change positions in a teacher model and check its generated actions. Then rotate the original Q/K vectors by the extra angle to form fitting targets. Fit new Q/K weights to approximate those targets. At inference, the candidate keeps the original position rule; its new weights supply an approximation of the extra rotation.</p></div>
+</div>
+<a class="figure-link" href="../assets/rope-position.png" rel="noopener" target="_blank" title="Open full-size figure"><img alt="RoPE intervention: internal action-position spacing increases while the execution clock stays fixed. Each Q/K channel pair receives an extra rotation; the circle is schematic." decoding="async" loading="lazy" src="../assets/rope-position.png"/></a>
+<figcaption><strong>Figure 2. </strong>RoPE intervention: internal action-position spacing increases while the execution clock stays fixed. Each Q/K channel pair receives an extra rotation; the circle is schematic.</figcaption>
+</figure>
+<h4 id="implementation-change-the-qk-rotations-associated-with-action-positions.">Implementation: change the Q/K rotations associated with action positions.</h4>
+<p>Let <span class="math inline">\(i=0,\ldots,49\)</span> index actions and <span class="math inline">\(P\)</span> denote the number of context tokens. The internal positions change, while the physical execution interval remains <span class="math inline">\(\Delta t=1/30\)</span> s: <span class="equation" id="eq:position"><span class="math display">\[
+p_i=P+i,\qquad p_i^{(s)}=P+si,\qquad t_i^{\rm exec}=t_0+i\Delta t.
+
+\]</span><a aria-label="Equation 6" class="equation-number" href="#eq:position">(6)</a></span> RoPE encodes position through rotations of Q/K <span class="citation" data-cites="rope"><a href="#ref-rope" role="doc-biblioref">[3]</a></span>: <span class="equation" id="eq:qk"><span class="math display">\[
+q_i=W_Q^{\mathsf T}x_i,\quad k_i=W_K^{\mathsf T}x_i,
+\qquad Q_i=R(p_i)q_i,\quad K_i=R(p_i)k_i.
+
+\]</span><a aria-label="Equation 7" class="equation-number" href="#eq:qk">(7)</a></span> Here, <span class="math inline">\(x_i\in\mathbb R^{1024}\)</span> is the hidden feature before projection, and <span class="math inline">\(W_Q,W_K\in\mathbb R^{1024\times256}\)</span> are the projection weights for one head. Within each 256-dimensional head, channels <span class="math inline">\(m\)</span> and <span class="math inline">\(m+128\)</span> form a rotation pair, for <span class="math inline">\(m=0,\ldots,127\)</span>. For one such pair <span class="math inline">\((a,b)\)</span>, <span class="equation" id="eq:rotation"><span class="math display">\[
+\begin{bmatrix}a'\\b'\end{bmatrix}=
+\begin{bmatrix}\cos\theta&amp;-\sin\theta\\\sin\theta&amp;\cos\theta\end{bmatrix}
+\begin{bmatrix}a\\b\end{bmatrix},\qquad
+\theta=p\,10000^{-m/128}.
+
+\]</span><a aria-label="Equation 8" class="equation-number" href="#eq:rotation">(8)</a></span> <span class="math inline">\(R(p)\)</span> denotes the rotations of all 128 channel pairs. Holding the content vectors before rotation fixed, the inner product between actions <span class="math inline">\(i,j\)</span> changes from the original expression to <span class="equation" id="eq:relative"><span class="math display">\[
+Q_i^{\mathsf T}K_j=q_i^{\mathsf T}R(j-i)k_j,\qquad
+(Q_i^{(s)})^{\mathsf T}K_j^{(s)}=q_i^{\mathsf T}R\bigl(s(j-i)\bigr)k_j.
+
+\]</span><a aria-label="Equation 9" class="equation-number" href="#eq:relative">(9)</a></span> The intervention therefore increases relative position spacing between actions. It also changes how action queries read the unchanged image, text, and state keys. Through softmax and the weighted aggregation of V, these changes affect subsequent action generation. The intervention does not directly scale V or joint targets.</p>
+<h4 id="test-does-the-position-intervention-increase-progress-along-the-original-route">Test: does the position intervention increase progress along the original route?</h4>
+<p>Opus 5.5 ran two sets of controls: (1) on 36 demonstration observations and 24 historical rollout observations, it changed action positions in all 18 layers to <span class="math inline">\(P+si\)</span>, testing <span class="math inline">\(s=0.8,1.25,1.5,2.0\)</span>; (2) on 36 demonstration observations, it kept RoPE unchanged and accelerated only the first six conditioning actions by factors of 1.25, 1.5, and 2.0. Each intervention and the original model used the same observations and initial noise.</p>
+<p>It first resampled the original predictions at different speeds and found the speed that most closely matched the intervened joint trajectory. The RoPE intervention with <span class="math inline">\(s=1.25\)</span> corresponded to approximately <span class="math inline">\(1.12\times\)</span>, whereas accelerating only the prefix corresponded to approximately <span class="math inline">\(1.01\times\)</span>. It therefore continued to investigate the position intervention.</p>
+<p>Opus 5.5 then tested: <strong>at the same prediction time, does the edited model move farther along the route planned by the original model?</strong> It performed forward kinematics and connected the positions of the original TCP poses into a reference route. Each edited position was matched to the nearest point on that route. Dividing the cumulative distance along the route to that point by the original model’s distance at the same time gives the <strong>path-progress ratio</strong>; the mean nearest distance from edited positions to the route gives the <strong>path deviation</strong> (Figure <a data-reference="fig:path-metrics" data-reference-type="ref" href="#fig:path-metrics">3</a>).</p>
+<figure data-latex-placement="htbp" id="fig:path-metrics">
+<a class="figure-link" href="../assets/path-metrics.png" rel="noopener" target="_blank" title="Open full-size figure"><img alt="Two path metrics. (a) At the same time, the original model has advanced 50 mm, while the edited position corresponds to 60 mm along the reference route, giving a progress ratio of 1.2. (b) Averaging the nearest distances from edited positions to the reference route gives the path deviation." decoding="async" loading="lazy" src="../assets/path-metrics.png"/></a>
+<figcaption><strong>Figure 3. </strong>Two path metrics. (a) At the same time, the original model has advanced 50 mm, while the edited position corresponds to 60 mm along the reference route, giving a progress ratio of 1.2. (b) Averaging the nearest distances from edited positions to the reference route gives the path deviation.</figcaption>
+</figure>
+<p>The calculation excludes the first six conditioning steps. Let <span class="math inline">\(c_0(u)\)</span> be the interpolated TCP route connecting original steps 6–49, <span class="math inline">\(L_0(u)\)</span> the distance along that route from step 6 to <span class="math inline">\(u\)</span>, <span class="math inline">\(e_r\)</span> the edited position at step <span class="math inline">\(r\)</span>, and <span class="math inline">\(\mathcal I=\{6,\ldots,37\}\)</span>. The nearest point, progress ratio, and deviation are <span class="equation" id="eq:progress"><span class="math display">\[
+\begin{aligned}
+u_r^*&amp;=\arg\min_{u\in[6,49]}\|e_r-c_0(u)\|_2,\\
+g_r&amp;=\frac{L_0(u_r^*)}{L_0(r)},\qquad
+\bar d=\frac{1}{|\mathcal I|}\sum_{r\in\mathcal I}\|e_r-c_0(u_r^*)\|_2.
+\end{aligned}
+
+\]</span><a aria-label="Equation 10" class="equation-number" href="#eq:progress">(10)</a></span> Table <a data-reference="tab:rope-diagnostic" data-reference-type="ref" href="#tab:rope-diagnostic">1</a> reports <span class="math inline">\(g_{37}\)</span> and <span class="math inline">\(\bar d\)</span> (mm). Arms whose original motion covers less than 15 mm within the comparison interval are excluded. Eligible arms are averaged within each observation, followed by the median across observations.</p>
+<div id="tab:rope-diagnostic">
+<p class="table-caption" id="table-caption-1"><strong>Table 1. </strong>Position scaling versus prefix acceleration. Opus 5.5 saved per-sample metrics; we report medians over eligible observations: 58 of 60 inputs in the RoPE group and 34 of 36 in the prefix group.</p><div aria-labelledby="table-caption-1" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">Intervention</th>
+<th scope="col" style="text-align: right;">Scale</th>
+<th scope="col" style="text-align: right;">Eligible observations</th>
+<th scope="col" style="text-align: right;">Progress ratio</th>
+<th scope="col" style="text-align: right;">Path deviation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Action RoPE</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">0.851</td>
+<td style="text-align: right;">0.793</td>
+</tr>
+<tr>
+<td style="text-align: left;">Action RoPE</td>
+<td style="text-align: right;">1.25</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">1.131</td>
+<td style="text-align: right;">1.229</td>
+</tr>
+<tr>
+<td style="text-align: left;">Action RoPE</td>
+<td style="text-align: right;">1.50</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">1.175</td>
+<td style="text-align: right;">1.935</td>
+</tr>
+<tr>
+<td style="text-align: left;">Action RoPE</td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">1.009</td>
+<td style="text-align: right;">4.674</td>
+</tr>
+<tr>
+<td style="text-align: left;">RTC prefix time compression</td>
+<td style="text-align: right;">1.25</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">1.004</td>
+<td style="text-align: right;">0.492</td>
+</tr>
+<tr>
+<td style="text-align: left;">RTC prefix time compression</td>
+<td style="text-align: right;">1.50</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">1.004</td>
+<td style="text-align: right;">0.796</td>
+</tr>
+<tr>
+<td style="text-align: left;">RTC prefix time compression</td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">1.007</td>
+<td style="text-align: right;">1.134</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p>Table <a data-reference="tab:rope-diagnostic" data-reference-type="ref" href="#tab:rope-diagnostic">1</a> shows that <span class="math inline">\(s=1.25\)</span> and <span class="math inline">\(1.5\)</span> increase progress, whereas the benefit largely disappears at <span class="math inline">\(2.0\)</span> and deviation increases. Accelerating only the prefix has little effect. <strong>We hypothesize that the time-to-action mapping learned at a fixed sampling interval may limit the benefits of position scaling.</strong> This is an interpretation of the non-monotonic trend, rather than an established cause.</p>
+<p>Opus 5.5 selected <span class="math inline">\(s=1.25\)</span> as its main target. This intervention changes the position rule within the action expert’s attention, leaving its weights unchanged. To preserve the production inference code, it used this model as a <strong>direct RoPE teacher</strong> and attempted to internalize the intervention into new weights with the same architecture as the original model.</p>
+<h3 id="s2-4"><span class="section-number">2.4 </span>First Attempt: Fit Only the Final Action Output Layer<a aria-label="Link to section" class="heading-anchor" href="#s2-4">#</a></h3>
+<p><strong>The minimal-change test: can editing only the last layer reproduce the teacher’s final actions?</strong> Opus 5.5 first fitted the output layer mapping 1024-dimensional features to 14 action-update channels. The teacher supplies final actions <span class="math inline">\(A_i^T\)</span>; at iteration <span class="math inline">\(k\)</span> and position <span class="math inline">\(i\)</span>, the candidate has state <span class="math inline">\(z_{k,i}\)</span>, final hidden feature <span class="math inline">\(h_{k,i}\)</span>, and remaining generation time <span class="math inline">\(\sigma_k=1-k/10\)</span>: <span class="equation" id="eq:e1"><span class="math display">\[
+\begin{aligned}
+v_{k,i}^{*}&amp;=\frac{z_{k,i}-A_i^T}{\sigma_k},\qquad
+v_{k,i}=B^{\mathsf T}h_{k,i}+b_0,\\
+z_{k+1,i}&amp;=z_{k,i}-0.1v_{k,i},\qquad k=0,\ldots,9,\quad i\geq6.
+\end{aligned}
+
+\]</span><a aria-label="Equation 11" class="equation-number" href="#eq:e1">(11)</a></span> <span class="math inline">\(v^*\)</span> is the target update toward the teacher’s final action, not the robot arm’s velocity. Opus 5.5 fitted <span class="math inline">\(B\)</span> using least squares regularized toward the original weights, with bias <span class="math inline">\(b_0\)</span> fixed. The sampler iterates ten times to produce the final actions (Figure <a data-reference="fig:head-distill" data-reference-type="ref" href="#fig:head-distill">4</a>).</p>
+<figure data-latex-placement="htbp" id="fig:head-distill">
+<a class="figure-link" href="../assets/output-head-distillation.png" rel="noopener" target="_blank" title="Open full-size figure"><img alt="Fit only the green output layer using targets derived from the teacher’s final actions. Its predictions drive the 10-step sampler; all other weights and native RoPE remain fixed." decoding="async" loading="lazy" src="../assets/output-head-distillation.png"/></a>
+<figcaption><strong>Figure 4. </strong>Fit only the green output layer using targets derived from the teacher’s final actions. Its predictions drive the 10-step sampler; all other weights and native RoPE remain fixed.</figcaption>
+</figure>
+<p><strong>Reconstruction on fitting inputs and transfer to new inputs were checked separately.</strong> Let <span class="math inline">\(a_{i,j},a^T_{i,j}\)</span> be the candidate’s and teacher’s final joint targets, with <span class="math inline">\(j\)</span> ranging over the 12 joints. The joint error for each observation is <span class="equation" id="eq:joint-rms"><span class="math display">\[
+E_{\rm RMS}=\sqrt{\frac{1}{32\times12}\sum_{i=6}^{37}\sum_{j=1}^{12}(a_{i,j}-a^T_{i,j})^2}.
+
+\]</span><a aria-label="Equation 12" class="equation-number" href="#eq:joint-rms">(12)</a></span> This squares the errors, averages them, and takes the square root, giving an error in radians; results are then averaged over observations. To check for abrupt changes in motion, it computed jerk, the rate of change of acceleration, from TCP positions <span class="math inline">\(\mathbf p_i\)</span>: <span class="equation" id="eq:jerk"><span class="math display">\[
+\mathbf j_i=\frac{\mathbf p_{i+3}-3\mathbf p_{i+2}+3\mathbf p_{i+1}-\mathbf p_i}{\Delta t^3},\qquad
+J=\sqrt{\frac1{29}\sum_{i=6}^{34}\|\mathbf j_i\|_2^2}.
+
+\]</span><a aria-label="Equation 13" class="equation-number" href="#eq:jerk">(13)</a></span> The reported ratio is <span class="math inline">\(J_{\rm edit}/J_{\rm orig}\)</span>, averaged over eligible arms within each observation. It excludes chunk transitions and is interpreted together with path progress and deviation.</p>
+<p>After three fitting rounds on 24 demonstration observations, joint RMS was 0.0050 rad. On another 12 demonstration and 16 historical rollout observations, the error increased to 0.0239 rad, mean path deviation was 8.256 mm, and the jerk ratio was 3.245. <strong>Reconstruction quality did not carry over to the test inputs, so Opus 5.5 abandoned output-head fitting and turned to the attention layers.</strong></p>
+<h3 id="s2-5"><span class="section-number">2.5 </span>Moving Inside Attention: Fitting Q/K Projections<a aria-label="Link to section" class="heading-anchor" href="#s2-5">#</a></h3>
+<p>Opus 5.5 moved the fitting target from final actions to Q/K representations: a known rotation directly supplies the targets, which the new weights approximate (Figure <a data-reference="fig:qk-weight-fit" data-reference-type="ref" href="#fig:qk-weight-fit">5</a>).</p>
+<figure data-latex-placement="htbp" id="fig:qk-weight-fit">
+<a class="figure-link" href="../assets/qk-weight-fit.png" rel="noopener" target="_blank" title="Open full-size figure"><img alt="Construct \(Y\) by rotating the original Q/K projections of the same features, then fit and save new weights. Native RoPE remains unchanged at inference." decoding="async" loading="lazy" src="../assets/qk-weight-fit.png"/></a>
+<figcaption><strong>Figure 5. </strong>Construct <span class="math inline">\(Y\)</span> by rotating the original Q/K projections of the same features, then fit and save new weights. Native RoPE remains unchanged at inference.</figcaption>
+</figure>
+<p><strong>Step 1: construct intermediate representation targets.</strong> To retain the candidate’s native RoPE <span class="math inline">\(R(P+i)\)</span> while approximating the teacher’s <span class="math inline">\(R(P+si)\)</span>, an additional rotation must be supplied by the projection output: <span class="equation" id="eq:compose"><span class="math display">\[
+R(P+i)R(\delta_i)=R(P+si),\qquad \delta_i=(s-1)i.
+
+\]</span><a aria-label="Equation 14" class="equation-number" href="#eq:compose">(14)</a></span> Targets are therefore constructed separately for Q and K: <span class="equation" id="eq:targets"><span class="math display">\[
+y_i^Q=R(\delta_i)W_{Q,0}^{\mathsf T}x_i,\quad
+ y_i^K=R(\delta_i)W_{K,0}^{\mathsf T}x_i.
+
+\]</span><a aria-label="Equation 15" class="equation-number" href="#eq:targets">(15)</a></span> Each target <span class="math inline">\(y_i\)</span> comes from applying a known rotation to the original Q/K of the same hidden feature <span class="math inline">\(x_i\)</span>, without human labels for faster actions.</p>
+<p><strong>Step 2: collect features and fit a closed-form solution.</strong> Opus 5.5 first checked whether the feature-collection forward pass altered the original output. Joint RMS was approximately 0.00037–0.00044 rad, below its chosen tolerance of 0.002 rad. Only then did it stack features and targets as rows of <span class="math inline">\(X\in\mathbb R^{N\times1024}\)</span> and <span class="math inline">\(Y\in\mathbb R^{N\times256}\)</span> and solve <span class="equation" id="eq:ridge"><span class="math display">\[
+\begin{aligned}
+W_{\rm fit}&amp;=\arg\min_W\left(\|XW-Y\|_F^2+\lambda_{\rm abs}\|W-W_0\|_F^2\right)\\
+&amp;=(X^{\mathsf T}X+\lambda_{\rm abs}I)^{-1}(X^{\mathsf T}Y+\lambda_{\rm abs}W_0),\\
+\Delta W&amp;=W_{\rm fit}-W_0,\qquad
+\lambda_{\rm abs}=\lambda_{\rm grid}\frac{\operatorname{tr}(X^{\mathsf T}X)}{1024}.
+\end{aligned}
+
+\]</span><a aria-label="Equation 16" class="equation-number" href="#eq:ridge">(16)</a></span> The first term brings the new projection closer to the target; the second limits its departure from the original weights. Here, <span class="math inline">\(\|\cdot\|_F^2\)</span> is the sum of squared entries, <span class="math inline">\(I\)</span> is the identity matrix, <span class="math inline">\(N\)</span> is the number of collected feature rows, and <span class="math inline">\(\lambda_{\rm grid}\)</span> is the candidate regularization coefficient, scaled by feature energy. The implementation solves a linear system rather than explicitly computing an inverse and uses no backpropagation. Each round recollects features from the candidate, while V projections remain unchanged. The shared weights do not directly receive the action index, so they rely on position information already present in the features to approximate the additional rotation.</p>
+<p><strong>Step 3: inspect generated actions and refine the fit.</strong> The initial fit edited Q/K in all 18 layers. After two rounds, normalized action RMS against the teacher on fitting observations fell from 0.03694 to approximately 0.00298. This measured final actions, not Q/K feature errors. The refined fit preserves layer 0 and fits only layers 1–17; its corresponding teacher also changes RoPE only in those layers. The rationale was that layer 0’s inputs have not yet undergone action-attention mixing and may lack the information needed for a shared projection to distinguish action indices.</p>
+<p><strong>Step 4: validate the refinement on held-out observations.</strong> The tempo edit used 48 observations from 12 demonstrations and 12 historical rollouts for fitting, reserving another 36 time points for testing. The time points do not overlap, but come from the same trajectories. After three fitting rounds, on the shared test set, the progress ratio increased from approximately 1.17 for the initial version to 1.20, deviation fell from 1.26 to 1.08 mm, and the jerk ratio fell from 1.47 to 1.37. Opus 5.5 therefore retained the tempo edit and proceeded to test edit strength and its combination with prefix repair.</p>
+<h3 id="s2-6"><span class="section-number">2.6 </span>Adding Parameter Constraints and Testing the Combination with Prefix Repair<a aria-label="Link to section" class="heading-anchor" href="#s2-6">#</a></h3>
+<p>Opus 5.5 controlled the fitted change with an editing strength <span class="math inline">\(\alpha\)</span>: <span class="equation" id="eq:alpha"><span class="math display">\[
+W(\alpha)=W_0+\alpha\Delta W,\qquad\Delta W=W_{\rm fit}(s=1.25)-W_0.
+
+\]</span><a aria-label="Equation 17" class="equation-number" href="#eq:alpha">(17)</a></span> <span class="math inline">\(\alpha=0\)</span> gives the original Q/K projections, and <span class="math inline">\(\alpha=1\)</span> gives the full tempo edit. This is a different parameter from the positional scale <span class="math inline">\(s=1.25\)</span> used during fitting. When it tested <span class="math inline">\(\alpha\)</span> from 0.25 to 1.5, progress initially increased, then saturated as path deviation grew. Restricting the edit to rank 16, 64, or 256 gave progress ratios of approximately 1.06, 1.10, and 1.16, below the approximately 1.20 achieved by the full tempo edit.</p>
+<p>It then compared prefix repair, tempo edit, and their combination on the same 36 test observations, adding trajectory time scaling and action-amplitude scaling as baselines, both with a factor of 1.21445. The path and jerk metrics in Table <a data-reference="tab:offline" data-reference-type="ref" href="#tab:offline">2</a> include 35 valid observations. The chunk-jump metric is the maximum adjacent TCP displacement around the splice between the first 4 steps of the old plan and steps 5–13 of the new plan, taking the larger value across the two arms. It includes ordinary displacement between adjacent actions.</p>
+<div id="tab:offline">
+<p class="table-caption" id="table-caption-2"><strong>Table 2. </strong>Offline comparison on identical test inputs. All metrics are medians; progress, deviation, and jerk use 35 valid inputs, and chunk jump uses 36. A progress ratio of 1.214 means advancing farther along the original path in the same time, not a 21.4% reduction in successful task completion time.</p><div aria-labelledby="table-caption-2" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">Method</th>
+<th scope="col" style="text-align: right;">Progress ratio</th>
+<th scope="col" style="text-align: right;">Deviation (mm)</th>
+<th scope="col" style="text-align: right;">Jerk ratio</th>
+<th scope="col" style="text-align: right;">Chunk jump (mm)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Original</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">44.223</td>
+</tr>
+<tr>
+<td style="text-align: left;">Prefix repair only</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">0.178</td>
+<td style="text-align: right;">1.004</td>
+<td style="text-align: right;">5.822</td>
+</tr>
+<tr>
+<td style="text-align: left;">tempo edit only (<span class="math inline">\(\alpha=1\)</span>)</td>
+<td style="text-align: right;">1.199</td>
+<td style="text-align: right;">1.076</td>
+<td style="text-align: right;">1.367</td>
+<td style="text-align: right;">41.453</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Combined edit</strong></td>
+<td style="text-align: right;"><strong>1.214</strong></td>
+<td style="text-align: right;"><strong>1.071</strong></td>
+<td style="text-align: right;"><strong>1.363</strong></td>
+<td style="text-align: right;"><strong>5.442</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Trajectory time scaling</td>
+<td style="text-align: right;">1.257</td>
+<td style="text-align: right;">0.038</td>
+<td style="text-align: right;">0.827</td>
+<td style="text-align: right;">44.223</td>
+</tr>
+<tr>
+<td style="text-align: left;">Action-amplitude scaling</td>
+<td style="text-align: right;">1.054</td>
+<td style="text-align: right;">4.870</td>
+<td style="text-align: right;">1.217</td>
+<td style="text-align: right;">53.529</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p>The combined candidate increased path progress and reduced chunk jumps, but its within-chunk jerk ratio rose to 1.363. Time scaling had lower deviation and jerk, but retained the original chunk jumps. A random weight direction produced 24.05 mm path deviation and a jerk ratio of 31.07, failing to preserve the original behavior. Opus 5.5 ultimately selected the combined edit with <span class="math inline">\(\alpha=1\)</span>. Since it did not compare against prefix repair combined with time scaling, this does not establish that editing outperforms every post-processing alternative.</p>
+<h3 id="s2-7"><span class="section-number">2.7 </span>Deliverables and Research Cost<a aria-label="Link to section" class="heading-anchor" href="#s2-7">#</a></h3>
+<p>After checking saving, rollback, and native reloading, Opus 5.5 delivered an independent checkpoint that modified <strong>1.16%</strong> of all model parameters. All 8 test inputs produced valid outputs. Its initial research run took <strong>1 hour, 50 minutes, and 42 seconds</strong>, with <strong>193 tool calls</strong> (163 Bash, 18 Write, 8 Read, and 4 others) and 187 API requests. Usage records were available for 181 requests, totaling <strong>184,614 output tokens</strong>, with 433,426 cache-write tokens and 36,783,281 cache-read tokens. The 6 requests without usage records are not counted as zero; cache reads include repeated context. These figures exclude subsequent real-robot analysis and preparation of this article.</p>
+<h2 id="s3"><span class="section-number">3 </span>Our Follow-up Experiments and Analysis<a aria-label="Link to section" class="heading-anchor" href="#s3">#</a></h2>
+<p>We next measured actual task time and chunk jumps, and analyzed internal effects through attention-region interventions and prefix-handling controls. These are our additional experiments and are not included in the cost of Opus 5.5’s initial research run.</p>
+<h3 id="s3-1"><span class="section-number">3.1 </span>Real-Robot Experiments: Task Time and Action Quality<a aria-label="Link to section" class="heading-anchor" href="#s3-1">#</a></h3>
+<p>We compared the original Training-Time RTC policy with the combined edited policy (<span class="math inline">\(\alpha=1\)</span>) on bottle placement, coin insertion, and block stacking. For each task, the two groups used identical object layouts, with 3 executions per policy. <strong>(1) Bottle placement.</strong> All six executions placed all four bottles. Both groups used the same 32-step execution length, 6-step RTC prefix, and action timing settings. The durations in Table <a data-reference="tab:completion" data-reference-type="ref" href="#tab:completion">3</a> run from the start of formal execution to the video-confirmed release of the fourth bottle inside the bin, using actual acquisition timestamps.</p>
+<div id="tab:completion">
+<p class="table-caption" id="table-caption-3"><strong>Table 3. </strong>Successful bottle-placement completion times under the same layout. Each group contains 3 executions; the mean is followed by the sample standard deviation. Repeat numbers indicate order within each group, not randomized pairing.</p><div aria-labelledby="table-caption-3" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">Repeat</th>
+<th scope="col" style="text-align: right;">Original RTC (s)</th>
+<th scope="col" style="text-align: right;">Combined edit, <span class="math inline">\(\alpha=1\)</span> (s)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">22.69</td>
+<td style="text-align: right;">20.45</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: right;">22.17</td>
+<td style="text-align: right;">21.87</td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: right;">22.41</td>
+<td style="text-align: right;">22.05</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mean <span class="math inline">\(\pm\)</span> SD</td>
+<td style="text-align: right;"><span class="math inline">\(22.42\pm0.26\)</span></td>
+<td style="text-align: right;"><span class="math inline">\(21.46\pm0.88\)</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p><strong>The edited policy finished 0.96 s earlier on average, a 4.3% reduction in time.</strong> This compares three successful executions per policy under the same layout and does not estimate a change in success rate.</p>
+<p>Within the same completion interval, we computed the TCP distance between adjacent commands at every plan switch, taking the larger value across the two arms. We then computed statistics per trajectory and averaged them over the three trajectories in each group (Table <a data-reference="tab:real" data-reference-type="ref" href="#tab:real">4</a>). The original and edited groups contained 60 and 58 switches, respectively; the initial entry into a plan was excluded.</p>
+<div id="tab:real">
+<p class="table-caption" id="table-caption-4"><strong>Table 4. </strong>Action quality over the same six successful recordings and completion intervals. Each metric is calculated per trajectory and then averaged with equal weight over the 3 trajectories per group. “Maximum” denotes the group mean of per-trajectory maxima.</p><div aria-labelledby="table-caption-4" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">Metric</th>
+<th scope="col" style="text-align: right;">Original RTC</th>
+<th scope="col" style="text-align: right;">Combined edit</th>
+<th scope="col" style="text-align: right;">Reduction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Mean chunk jump (mm)</td>
+<td style="text-align: right;">26.23</td>
+<td style="text-align: right;">1.43</td>
+<td style="text-align: right;"><strong>94.5%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Mean of per-trial jump P95 (mm)</td>
+<td style="text-align: right;">43.57</td>
+<td style="text-align: right;">4.53</td>
+<td style="text-align: right;">89.6%</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mean of per-trial maximum jump (mm)</td>
+<td style="text-align: right;">51.49</td>
+<td style="text-align: right;">5.87</td>
+<td style="text-align: right;">88.6%</td>
+</tr>
+<tr>
+<td style="text-align: left;">Command jerk P95 (m/s<span class="math inline">\(^3\)</span>)</td>
+<td style="text-align: right;">1040.40</td>
+<td style="text-align: right;">234.78</td>
+<td style="text-align: right;">77.4%</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mean end-effector tracking error (mm)</td>
+<td style="text-align: right;">19.59</td>
+<td style="text-align: right;">19.17</td>
+<td style="text-align: right;">2.1%</td>
+</tr>
+</tbody>
+</table></div>
+</div><p class="execution-backlink"><a href="#bottle-video">↑ Watch the six original-speed executions</a></p>
+<p><strong>Mean chunk jump decreased by 94.5%, while end-effector tracking error remained almost unchanged.</strong> The command jerk P95, computed from third-order differences of the complete command trajectory at 30 Hz, also decreased by 77.4%. It includes improvements at plan switches, unlike the offline jerk metric that measures only within-chunk behavior.</p>
+<p><strong>(2) Coin insertion: the speedup occurred mainly during transport after grasping.</strong> We divided the action into stages using sustained closing and opening events in the measured gripper states. Table <a data-reference="tab:coin-stages" data-reference-type="ref" href="#tab:coin-stages">5</a> shows that the total time from left-gripper closure to handover release fell from <strong>5.85 s to 4.64 s, a 20.7% reduction</strong>. Within this interval, the transport stage from left-gripper closure to right-gripper closure shortened by <strong>22.1%</strong>; the time from the start to grasping and the time spent releasing during the handover were almost unchanged.</p>
+<div id="tab:coin-stages">
+<p class="table-caption" id="table-caption-5"><strong>Table 5. </strong>Stage durations for coin insertion under the same layout, with 3 executions per policy. Values are group means. Stage boundaries come from measured gripper states; the start is the first valid plan tick of formal execution. The final row sums the two middle stages.</p><div aria-labelledby="table-caption-5" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">Stage</th>
+<th scope="col" style="text-align: right;">Original (s)</th>
+<th scope="col" style="text-align: right;">Edited (s)</th>
+<th scope="col" style="text-align: right;">Time reduction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Approach/grasp: start to left closure</td>
+<td style="text-align: right;">8.034</td>
+<td style="text-align: right;">8.039</td>
+<td style="text-align: right;"><span class="math inline">\(-0.1\%\)</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">Transport: left to right closure</td>
+<td style="text-align: right;">5.451</td>
+<td style="text-align: right;">4.245</td>
+<td style="text-align: right;"><strong>22.1%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">Handover release: right closure to left opening</td>
+<td style="text-align: right;">0.399</td>
+<td style="text-align: right;">0.396</td>
+<td style="text-align: right;">0.7%</td>
+</tr>
+<tr>
+<td style="text-align: left;">After grasp to handover release (total)</td>
+<td style="text-align: right;"><strong>5.849</strong></td>
+<td style="text-align: right;"><strong>4.641</strong></td>
+<td style="text-align: right;"><strong>20.7%</strong></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p>Full-task success counts in these six recordings were <strong>0/3</strong> for the original policy and <strong>1/3</strong> for the edited policy. The 20.7% therefore measures the reduction in the stage from grasping to handover release, which we report separately from the full-task completion time in the bottle experiment.</p>
+<p><strong>(3) Block stacking: no clear speedup was observed.</strong> All 3 tests in each group ultimately succeeded, giving <strong>3/3</strong> successes for both policies. In the original policy’s second execution, a failed stacking attempt was followed by a new grasp and successful completion, resulting in a longer total time of <strong>28.27 s</strong>. Table <a data-reference="tab:stack-completion" data-reference-type="ref" href="#tab:stack-completion">6</a> retains the completion times of all six executions. To compare execution speed without retries, we exclude that run when computing the mean. The remaining 2 original runs and the 3 edited runs averaged <strong>19.46 and 19.28 s</strong>, respectively: a reduction of only <strong>0.19 s (approximately 1.0%)</strong>, with overlapping individual durations.</p>
+<div id="tab:stack-completion">
+<p class="table-caption" id="table-caption-6"><strong>Table 6. </strong>Block-stacking completion times under the same layout. Timing runs from the start of formal execution to video confirmation that the final block has been released and is supported by the stack below. <span class="math inline">\(\dagger\)</span> denotes success after retrying a failed stack: the result is retained but excluded from the mean used for the speed comparison. Repeat numbers indicate order within each group.</p><div aria-labelledby="table-caption-6" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">Repeat</th>
+<th scope="col" style="text-align: right;">Original RTC (s)</th>
+<th scope="col" style="text-align: right;">Combined edit (s)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">19.42</td>
+<td style="text-align: right;">19.56</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: right;"><span class="math inline">\(28.27^{\dagger}\)</span></td>
+<td style="text-align: right;">19.00</td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: right;">19.50</td>
+<td style="text-align: right;">19.26</td>
+</tr>
+<tr>
+<td style="text-align: left;">Mean (excluding retry)</td>
+<td style="text-align: right;"><strong>19.46</strong> (<span class="math inline">\(n=2\)</span>)</td>
+<td style="text-align: right;"><strong>19.28</strong> (<span class="math inline">\(n=3\)</span>)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Final successes (all tests)</td>
+<td style="text-align: right;">3/3</td>
+<td style="text-align: right;">3/3</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p><strong>These real-robot results show that weight editing did produce gains in our tasks: bottle placement became faster with smaller chunk jumps, and the transport stage in coin insertion also accelerated. However, this remains an initial attempt, with limited speed gains. This is consistent with the hypothesis and offline results in Section <a data-reference="sec:tempo-hypothesis" data-reference-type="ref" href="#s2-3">2.3</a>: the learned relationship between action positions and displacements may provide a way to adjust the pace of actions.</strong></p>
+<h3 id="s3-2"><span class="section-number">3.2 </span>Mechanism Analysis: Which Attention Changes Preserve the Progress Gain?<a aria-label="Link to section" class="heading-anchor" href="#s3-2">#</a></h3>
+<p>We compared the original model, the direct RoPE teacher, and the tempo-edited model on the same eight bottle-task observations, fixing the initial noise, RTC conditions, and number of sampling steps, with prefix repair disabled. First, the tempo-edited model’s attention to context was closer to the teacher’s: its distributional distance, measured by JSD, was 0.00173, below its distance of 0.00792 from the original model (lower means more similar). This supports that fitting preserved part of the position intervention’s internal effect.</p>
+<figure data-latex-placement="htbp" id="fig:attention-regions">
+<a class="figure-link" href="../assets/attention-regions.png" rel="noopener" target="_blank" title="Open full-size figure"><img alt="Attention-score interventions before the shared masked softmax. Rows are queries; columns are keys. Blue: actions reading context. Orange: actions reading actions. Gray: original scores. The upper-right block is masked. Colors denote interventions, not measured magnitudes." decoding="async" loading="lazy" src="../assets/attention-regions.png"/></a>
+<figcaption><strong>Figure 6. </strong>Attention-score interventions before the shared masked softmax. Rows are queries; columns are keys. Blue: actions reading context. Orange: actions reading actions. Gray: original scores. The upper-right block is masked. Colors denote interventions, not measured magnitudes.</figcaption>
+</figure>
+<p>Figure <a data-reference="fig:attention-regions" data-reference-type="ref" href="#fig:attention-regions">6</a> marks two regions: the lower-right block contains actions reading actions, and the lower-left block contains actions reading images, text, and state. At each layer, using the same current hidden features <span class="math inline">\(X\)</span>, we compute projections with the original (<span class="math inline">\(r=0\)</span>) and edited (<span class="math inline">\(r=E\)</span>) Q/K weights according to Equation <a data-reference="eq:qk" data-reference-type="eqref" href="#eq:qk">(7)</a> and apply the original RoPE, obtaining the pre-softmax scores: <span class="equation" id="eq:route-scores"><span class="math display">\[
+L^r_{ij}=\frac{(Q_i^r)^{\mathsf T}K_j^r}{\sqrt d},
+\qquad L^r=[\,L^r_{\rm ctx}\mid L^r_{\rm act}\,],\quad r\in\{0,E\}.
+
+\]</span><a aria-label="Equation 18" class="equation-number" href="#eq:route-scores">(18)</a></span> Here, <span class="math inline">\(i\)</span> is an action query, <span class="math inline">\(j\)</span> is a key, and <span class="math inline">\(d=256\)</span>; ctx denotes images, text, and state, while act denotes actions. Cached context keys remain unchanged. The two regional interventions are <span class="equation" id="eq:route-interventions"><span class="math display">\[
+\begin{aligned}
+A_{\rm act\text{-}only}&amp;=\operatorname{softmax}\!\left([\,L^0_{\rm ctx}\mid L^E_{\rm act}\,]+M\right),\\
+A_{\rm ctx\text{-}only}&amp;=\operatorname{softmax}\!\left([\,L^E_{\rm ctx}\mid L^0_{\rm act}\,]+M\right).
+\end{aligned}
+
+\]</span><a aria-label="Equation 19" class="equation-number" href="#eq:route-interventions">(19)</a></span> <span class="math inline">\(M\)</span> is the original attention mask (<span class="math inline">\(0\)</span> at readable positions and <span class="math inline">\(-\infty\)</span> at masked positions). The combined scores are normalized together, followed by <span class="math inline">\(AV\)</span> and the remaining forward pass; V projection weights remain unchanged. Because the softmax denominator is shared, changing one block’s scores can also change the other block’s probabilities.</p>
+<div id="tab:attention-routes">
+<p class="table-caption" id="table-caption-7"><strong>Table 7. </strong>Effects of attention-route interventions on predicted actions, reported as medians over eight inputs. Progress is measured along the original path at steps 21 and 37. All variants use the same arms, selected by at least 15 mm of cumulative motion in the original predictions. Prefix repair is disabled throughout, and jerk is measured within chunks. These are geometric quantities of offline plans, not measured completion times.</p><div aria-labelledby="table-caption-7" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">Intervention</th>
+<th scope="col" style="text-align: right;">Progress at 21</th>
+<th scope="col" style="text-align: right;">Progress at 37</th>
+<th scope="col" style="text-align: right;">Deviation (mm)</th>
+<th scope="col" style="text-align: right;">Jerk ratio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Original</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">1.000</td>
+</tr>
+<tr>
+<td style="text-align: left;">Direct RoPE teacher</td>
+<td style="text-align: right;">1.203</td>
+<td style="text-align: right;">1.101</td>
+<td style="text-align: right;">1.012</td>
+<td style="text-align: right;">1.105</td>
+</tr>
+<tr>
+<td style="text-align: left;">Full tempo edit</td>
+<td style="text-align: right;"><strong>1.227</strong></td>
+<td style="text-align: right;"><strong>1.140</strong></td>
+<td style="text-align: right;">1.028</td>
+<td style="text-align: right;">1.289</td>
+</tr>
+<tr>
+<td style="text-align: left;">Action-key scores only</td>
+<td style="text-align: right;"><strong>1.178</strong></td>
+<td style="text-align: right;"><strong>1.087</strong></td>
+<td style="text-align: right;">1.100</td>
+<td style="text-align: right;">1.249</td>
+</tr>
+<tr>
+<td style="text-align: left;">Image and prompt/state scores only</td>
+<td style="text-align: right;"><strong>1.057</strong></td>
+<td style="text-align: right;"><strong>1.039</strong></td>
+<td style="text-align: right;">0.484</td>
+<td style="text-align: right;">0.981</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p>Table <a data-reference="tab:attention-routes" data-reference-type="ref" href="#tab:attention-routes">7</a> shows that the step-37 progress ratio changes from 1.140 with the full tempo edit to 1.087 with the action-only intervention and 1.039 with the context-only intervention. <strong>Intervening on scores between actions preserves more of the offline progress gain.</strong></p>
+<h3 id="s3-3"><span class="section-number">3.3 </span>Repairing Prefix Consistency in Parameter Space<a aria-label="Link to section" class="heading-anchor" href="#s3-3">#</a></h3>
+<p>Unexpectedly, prefix repair brought our attention to a bug left unhandled in the official public Training-Time RTC (TT-RTC) code: when actual latency is shorter than the preset prefix, conditioning actions modified by the final integration step may still enter execution. We first briefly introduce TT-RTC.</p>
+<p><strong>TT-RTC addresses how a robot can keep moving while waiting for inference of the next chunk and then switch smoothly to that chunk.</strong> The top row of Figure <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a> shows the remaining actions <span class="math inline">\(A_1,A_2,\ldots\)</span> from the previous chunk. When the model starts inferring the next action sequence at <span class="math inline">\(A_1\)</span>, the robot continues executing the current chunk. We use the first six steps <span class="math inline">\(A_1\)</span>–<span class="math inline">\(A_6\)</span>, expected to execute during the wait, as the conditioning prefix, allowing the model to generate subsequent new actions <span class="math inline">\(B_7,B_8,\ldots\)</span>. The fixed-latency simulation in the official TT-RTC code uses equal conditioning length and latency. Taking the six-step example in Figure <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a>(a), the new result arrives just as the old chunk reaches <span class="math inline">\(A_6\)</span>. The program discards the first six steps of the new output and starts executing at <span class="math inline">\(B_7\)</span>, completing the chunk transition <span class="citation" data-cites="trainingrtc trainingrtccode"><a href="#ref-trainingrtc" role="doc-biblioref">[4]</a>, <a href="#ref-trainingrtccode" role="doc-biblioref">[5]</a></span>.</p>
+<figure data-latex-placement="!htbp" id="fig:prefix-return">
+<a class="figure-link" href="../assets/prefix-return.png" rel="noopener" target="_blank" title="Open full-size figure"><img alt="Switching from the old chunk to the new one. The top row shows the old plan’s remaining actions when computation starts; the first six are used as conditions. The three rows below show returned action sequences, with arrows marking where execution resumes after the switch. Gray positions are discarded, and asterisks indicate modifications left by the final sampling integration step. (a) A six-step wait: the old plan reaches \(A_6\) , then switches to \(B_7\) . (b) A four-step wait: the old plan reaches \(A_4\) , but switches to modified \(A_5^*,A_6^*\) (red). (c) After repair, the switch still occurs after \(A_4\) , but continues with unchanged \(A_5,A_6\) (green), followed by new actions \(B_7,B_8\) ." decoding="async" loading="lazy" src="../assets/prefix-return.png"/></a>
+<figcaption><strong>Figure 7. </strong>Switching from the old chunk to the new one. The top row shows the old plan’s remaining actions when computation starts; the first six are used as conditions. The three rows below show returned action sequences, with arrows marking where execution resumes after the switch. Gray positions are discarded, and asterisks indicate modifications left by the final sampling integration step. (a) A six-step wait: the old plan reaches <span class="math inline">\(A_6\)</span>, then switches to <span class="math inline">\(B_7\)</span>. (b) A four-step wait: the old plan reaches <span class="math inline">\(A_4\)</span>, but switches to modified <span class="math inline">\(A_5^*,A_6^*\)</span> (red). (c) After repair, the switch still occurs after <span class="math inline">\(A_4\)</span>, but continues with unchanged <span class="math inline">\(A_5,A_6\)</span> (green), followed by new actions <span class="math inline">\(B_7,B_8\)</span>.</figcaption>
+</figure>
+<p><strong>Figure <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a>(b) shows the problem when the result returns early.</strong> Model computation takes only four action steps, and the robot has reached only <span class="math inline">\(A_4\)</span> of the old chunk, so it still needs <span class="math inline">\(A_5,A_6\)</span>. However, the conditioning prefix still participates in integration updates during flow-matching sampling. With the ten sampling iterations we use, prefix changes made by integrations 1–9 are replaced by the supplied old actions before the next iteration. <strong>After the tenth integration, however, the result is returned directly, without another replacement.</strong> Consequently, the new result may contain <span class="math inline">\(A_5^*,A_6^*\)</span> rather than the planned <span class="math inline">\(A_5,A_6\)</span>. Switching chunks at this point sends the robot two modified actions, producing a jump. Under the setup in Figure <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a>(a), the official TT-RTC code discards the entire prefix, so this issue is not exposed.</p>
+<p>For deployments requiring IK, we typically reserve a conservatively longer prefix to cover solver-latency fluctuations. Larger fluctuations can also create a larger gap between this reserved length and the latency of a particular inference call. When a result returns early, more conditioning actions remain to be executed. The original OpenWAM <span class="citation" data-cites="openwam"><a href="#ref-openwam" role="doc-biblioref">[6]</a></span> implementation uses <strong>Mink differential IK wrapped by i2rt, solving quadratic programs (QPs) iteratively</strong>. Action decoding, including IK, has a median duration of <strong>22.9 ms</strong> and a maximum of <strong>921.2 ms</strong>. The subsequently used DLS gate adjusts motion regularization according to the Jacobian’s smallest singular value and limits joint changes; its duration still ranges from a median of <strong>49.3 ms</strong> to a maximum of <strong>177.7 ms</strong>.</p>
+<p>Figure <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a>(c) shows the repaired transition: even when the new result arrives after <span class="math inline">\(A_4\)</span>, the next executed actions are still the planned <span class="math inline">\(A_5,A_6\)</span>. Opus 5.5’s prefix repair makes the sampling updates for these conditioning actions close to zero, preventing the final integration from modifying them. It edits the time-modulation weights of the action expert’s final normalization layer, <code>final_norm_1.Dense_0.kernel</code>. Under the current setup, its effect is nearly equivalent to executing <code>actions[:6] = condition[:6]</code> before returning: restoring the first six steps to the supplied old actions. Opus approximated this operation by editing parameters.</p>
+<p>We subsequently added controls on the same 36 observations (12 local demonstration observations and 24 historical rollout observations), fixing random seeds and sampling steps. We compared shortening the conditioning prefix, using prefix repair alone, and directly restoring the prefix, all without the tempo edit.</p>
+<div id="tab:prefix-e0">
+<p class="table-caption" id="table-caption-8"><strong>Table 8. </strong>Prefix-handling controls on 36 identical observations, assuming four steps are discarded in execution. The transition-step distance is the TCP distance from step 4 of the old plan to step 5 of the new plan, taking the larger value across the two arms and then the median across samples. Subsequent-action difference is the RMS relative to the original model over steps 7–38 and 12 joints, averaged across samples.</p><div aria-labelledby="table-caption-8" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">Method</th>
+<th scope="col" style="text-align: right;">Transition step (mm)</th>
+<th scope="col" style="text-align: right;">Subsequent difference (rad)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Original, 6-step conditioning</td>
+<td style="text-align: right;">19.158</td>
+<td style="text-align: right;">0.000000</td>
+</tr>
+<tr>
+<td style="text-align: left;">Original, 4-step conditioning</td>
+<td style="text-align: right;">4.930</td>
+<td style="text-align: right;">0.002228</td>
+</tr>
+<tr>
+<td style="text-align: left;">Prefix repair only, 6-step conditioning</td>
+<td style="text-align: right;"><strong>1.798</strong></td>
+<td style="text-align: right;">0.000375</td>
+</tr>
+<tr>
+<td style="text-align: left;">Code fix: restore 6 steps before return</td>
+<td style="text-align: right;"><strong>1.885</strong></td>
+<td style="text-align: right;">0.000000</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p>Table <a data-reference="tab:prefix-e0" data-reference-type="ref" href="#tab:prefix-e0">8</a> shows that, compared with the original <strong>19.16 mm</strong>, the prefix weight edit and the code fix that directly restores the prefix reduce the median transition-step distance to <strong>1.80 and 1.88 mm</strong>, respectively, with very small changes to subsequent actions. This supports their approximate equivalence for prefix repair. Shortening the conditioning prefix to four steps also improves this particular comparison, but does not eliminate the same issue when actual latency is shorter than the conditioning length.</p>
+<p><strong>By editing time-modulation weights to make updates to the conditioning prefix close to zero, Opus repaired in parameter space a bug left unhandled by the official public code: when actual latency is shorter than the preset prefix, conditioning actions altered by sampling updates may still enter the execution sequence.</strong> This prefix protection is especially important for deployments requiring IK, where a margin must be reserved for latency fluctuations. We did not specify this defect; Opus discovered it during its research and produced a parameter-level repair under the constraint of leaving inference code unchanged.</p>
+<h2 class="unnumbered" id="closing-thoughts">Closing Thoughts<a aria-label="Link to section" class="heading-anchor" href="#closing-thoughts">#</a></h2>
+<p>We thought this would be a moment of magic: Claude would understand the weights, intuitively change a few parameters, and the robot would complete its task faster.</p>
+<p>But that is not what happened. Opus 5.5 drew on its understanding of RoPE to hypothesize that positional encoding might influence the pace of predicted actions. It designed controlled experiments to test that hypothesis, then used standard fitting methods to capture the effect of the intervention in the weights. When fitting the output layer did not generalize well to test inputs, it turned to the Q/K projections inside attention. The whole Weight-Space Editing method emerged from this sequence of mechanistic understanding, mathematical derivation, and experimental feedback. We believe it worked not just because Opus understood model parameters, but because it could synthesize research knowledge, understand different mechanisms, and turn that understanding into hypotheses and experiments.</p>
+<p>This raises a more important question: when frontier models can draw on multiple domains to propose hypotheses, design experiments, and revise their methods, what could this AutoResearch capability change about how we discover and solve scientific problems in embodied intelligence?</p>
+<p>As frontier models internalize more robotics knowledge, how will the next generation, and the generations after it, change the way we ask questions, test ideas, and pursue research? This case cannot answer that yet. But it makes those questions concrete, and leaves us eager to see what comes next.</p>
+<p>We hope this article offers a glimpse of that possibility. We want to know whether the next idea it proposes, once validated experimentally, might also change our understanding of robots.</p>
+<h2 id="references">References</h2><ol class="references" role="doc-bibliography"><li id="ref-wsp"><p>Rikiya Takehi, Jayden Teoh, Alex Zhang, Omar Khattab. <em>Sparks of Weight-Space Programming: LLMs can natively read &amp; write neural network weights</em>. MIT CSAIL, 2026. <a href="https://rikiyat.github.io/blog/weight-space-programming/" class="uri">https://rikiyat.github.io/blog/weight-space-programming/</a>.</p>
+</li><li id="ref-pi05"><p>Physical Intelligence et al. <em><span class="math inline">\(\pi_{0.5}\)</span>: a Vision-Language-Action Model with Open-World Generalization</em>. arXiv:2504.16054, 2025. <a href="https://arxiv.org/abs/2504.16054" class="uri">https://arxiv.org/abs/2504.16054</a>.</p>
+</li><li id="ref-rope"><p>Jianlin Su et al. <em>RoFormer: Enhanced Transformer with Rotary Position Embedding</em>. arXiv:2104.09864. <a href="https://arxiv.org/abs/2104.09864" class="uri">https://arxiv.org/abs/2104.09864</a>.</p>
+</li><li id="ref-trainingrtc"><p>Kevin Black, Allen Z. Ren, Michael Equi, Sergey Levine. <em>Training-Time Action Conditioning for Efficient Real-Time Chunking</em>. arXiv:2512.05964v2. <a href="https://arxiv.org/html/2512.05964v2" class="uri">https://arxiv.org/html/2512.05964v2</a>.</p>
+</li><li id="ref-trainingrtccode"><p>Physical Intelligence. <em>real-time-chunking-kinetix</em>, commit <code>9296f31d62d5</code>. <a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix" class="uri">https://github.com/Physical-Intelligence/real-time-chunking-kinetix</a>. We inspected <code>src/model.py</code> and <code>src/eval_flow.py</code>.</p>
+</li><li id="ref-openwam"><p>Yuran Wang et al. <em>OpenWAM: An Open, Modular Exploration Towards Systematic World-Action Model Pretraining</em>. arXiv:2609.07398, 2026. <a href="https://arxiv.org/abs/2609.07398" class="uri">https://arxiv.org/abs/2609.07398</a>.</p>
+</li></ol></div>
+<footer class="article-footer"><p>Continue reading in <a class="language-link" href="../zh/">中文 →</a></p><p><a href="https://github.com/Cuzyoung/robotics-weight-editing">GitHub</a></p></footer>
+</article></main></div><footer class="site-footer">Robotics Weight Editing <span>·</span> Ziyang Gong et al.</footer>
+</body></html>

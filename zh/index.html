@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opus-5.5 Makes π₀.₅ Move Faster and Smoother | Robotics Weight Editing</title>
+<meta name="description" content="Opus 5.5 如何从机制理解出发，通过离线实验与闭式拟合修改机器人策略，以及我们随后在 YAM 机械臂上的验证。"><meta name="color-scheme" content="light dark">
+<script src="../assets/theme-init.js"></script>
+<link rel="canonical" href="https://cuzyoung.github.io/robotics-weight-editing/zh/"><link rel="alternate" hreflang="en" href="https://cuzyoung.github.io/robotics-weight-editing/en/"><link rel="alternate" hreflang="zh-CN" href="https://cuzyoung.github.io/robotics-weight-editing/zh/">
+<meta property="og:type" content="article"><meta property="og:title" content="Opus-5.5 Makes π₀.₅ Move Faster and Smoother"><meta property="og:description" content="Opus 5.5 如何从机制理解出发，通过离线实验与闭式拟合修改机器人策略，以及我们随后在 YAM 机械臂上的验证。"><meta property="og:image" content="https://cuzyoung.github.io/robotics-weight-editing/assets/bottles-poster.jpg">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="../assets/style.css"><link rel="stylesheet" href="../assets/findings.css"><link rel="stylesheet" href="../assets/method-visuals.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "ScholarlyArticle", "headline": "Opus-5.5 Makes π₀.₅ Move Faster and Smoother: 权重编辑，还是 AutoResearch？", "inLanguage": "zh-CN", "author": [{"@type": "Person", "name": "Ziyang Gong"}, {"@type": "Person", "name": "Kaifeng Zheng"}, {"@type": "Person", "name": "Yingrui Huang"}, {"@type": "Person", "name": "Wendi Chen"}, {"@type": "Person", "name": "Minghuan Liu"}, {"@type": "Person", "name": "Zhenjie Yang"}], "description": "Opus 5.5 如何从机制理解出发，通过离线实验与闭式拟合修改机器人策略，以及我们随后在 YAM 机械臂上的验证。"}</script>
+<script defer src="../assets/app.js"></script>
+<script defer src="../assets/method-visuals.js"></script>
+<link rel="stylesheet" href="../assets/edit-story.css">
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/navigation.css">
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],tags:'none'},svg:{fontCache:'global'},options:{enableMenu:false}};</script>
+<script defer src="../assets/vendor/tex-svg-full.js"></script>
+</head><body id="top">
+<a class="skip-link" href="#article">跳转正文</a>
+<div class="reading-progress" aria-hidden="true"><span></span></div>
+<header class="site-header"><a class="site-name" href="../">Robotics Weight Editing<span class="site-dot">.</span></a><nav class="top-nav" aria-label="主导航"><a href="https://github.com/Cuzyoung/robotics-weight-editing">GitHub ↗</a><div class="languages" aria-label="Language"><a class="language-link " lang="en" hreflang="en" href="../en/">EN</a><span aria-hidden="true">/</span><a class="language-link selected" lang="zh-CN" hreflang="zh-CN" href="../zh/" aria-current="page">中文</a></div><button class="theme-toggle" type="button" aria-pressed="false" aria-label="关灯，切换纯黑背景" hidden><span class="theme-icon" aria-hidden="true">☾</span><span class="theme-label">关灯</span></button></nav></header>
+<div class="page-layout">
+<aside class="sidebar"><nav aria-label="文章目录"><p class="toc-label">文章目录</p><ol class="toc"><li class="toc-level-1"><a href="#introduction"><span></span>引言</a></li><li class="toc-level-1"><a href="#execution"><span></span>真机执行展示</a></li><li class="toc-level-1"><a href="#tldr"><span></span>Findings</a></li><li class="toc-level-2"><a href="#rtc-finding-title"><span>01</span>前缀修复</a></li><li class="toc-level-2"><a href="#rope-finding-title"><span>02</span>增大 RoPE 位置间隔</a></li><li class="toc-level-2"><a href="#qk-finding-title"><span>03</span>节奏加速</a></li><li class="toc-level-1"><a href="#abstract"><span></span>完整摘要</a></li><li class="toc-level-1"><a href="#s1"><span>1</span>我们的想法与研究条件</a></li><li class="toc-level-1"><a href="#s2"><span>2</span>Opus 5.5 的假设、验证与解法</a></li><li class="toc-level-2"><a href="#s2-1"><span>2.1</span>定位提速对象：推理等待与动作执行</a></li><li class="toc-level-2"><a href="#s2-2"><span>2.2</span>修复保留动作前缀中的 chunk 跳变</a></li><li class="toc-level-2"><a href="#s2-3"><span>2.3</span>动作节奏假设与 RoPE 位置干预</a></li><li class="toc-level-2"><a href="#s2-4"><span>2.4</span>首次尝试：仅拟合末端动作输出层</a></li><li class="toc-level-2"><a href="#s2-5"><span>2.5</span>转向注意力内部：拟合 Q/K 投影</a></li><li class="toc-level-2"><a href="#s2-6"><span>2.6</span>进一步施加参数约束，并与前缀修复合并验证</a></li><li class="toc-level-2"><a href="#s2-7"><span>2.7</span>交付与研究开销</a></li><li class="toc-level-1"><a href="#s3"><span>3</span>我们后续的实验与分析</a></li><li class="toc-level-2"><a href="#s3-1"><span>3.1</span>真机实验：任务用时与动作质量</a></li><li class="toc-level-2"><a href="#s3-2"><span>3.2</span>机制分析：哪些注意力变化保留了进度收益</a></li><li class="toc-level-2"><a href="#s3-3"><span>3.3</span>在参数空间修复前缀一致性问题</a></li><li class="toc-level-1"><a href="#closing-thoughts"><span></span>结语</a></li><li class="toc-level-1"><a href="#references"><span></span>参考文献</a></li></ol><a class="back-to-top" href="#top">↑ 回到顶部</a></nav></aside>
+<main id="article"><article>
+<header class="article-header"><p class="eyebrow">ROBOTICS · WEIGHT EDITING · AUTORESEARCH</p><h1>Opus-5.5 Makes <span class="pi">π<sub>0.5</sub></span><br class="title-break"> Move Faster and Smoother</h1><p class="subtitle">权重编辑，还是 AutoResearch？</p><div class="authors">Ziyang Gong<sup>1,2</sup> · Kaifeng Zheng<sup>1,2</sup> · Yingrui Huang<sup>2</sup> · Wendi Chen<sup>1</sup> · Minghuan Liu<sup>2</sup> · Zhenjie Yang<sup>3</sup></div><div class="affiliations"><span><sup>1</sup> Shanghai Jiao Tong University</span><span><sup>2</sup> Shanghai Innovation Institute</span><span><sup>3</sup> The University of Hong Kong</span></div><div class="article-meta"><span>Blog</span><span>·</span><span>约 40 分钟阅读</span></div></header>
+
+<section class="article-introduction" id="introduction" aria-label="引言"><p>我们把一个问题交给 Opus 5.5：能否通过少量权重修改，让已训练好的机器人策略执行得更快、更平滑？我们提供了预训练的 π₀.₅、源码、历史轨迹和一张 RTX 4090，要求<strong>不使用反向传播，不改生产推理程序</strong>。</p>
+<p>Opus 在离线实验中找到两条线索：<strong>增大 RoPE 的动作位置间隔来改变预测节奏，修复前缀处理来减小动作切换时的跳变</strong>，再将这些效果写入权重。我们随后进行真机验证：<strong>放瓶子任务用时缩短 4.3%，平均 chunk 跳变降低 94.5%</strong>。下面记录它如何提出假设、设计实验，并在失败后修正解法。</p></section>
+<div class="findings video-intro"><section class="execution-showcase" id="execution" aria-labelledby="execution-title"><div class="execution-heading"><div><p class="finding-eyebrow">随后，我们在 YAM 上验证</p><h3 id="execution-title">同一任务，同一布局，新权重。</h3></div><a href="#s3-1">完整结果 ↗</a></div>
+<div class="execution-metrics"><div><strong>−7.8<span>%</span></strong><b>夹瓶子用时 · 最快记录对比</b><span>22.17 s → 20.45 s</span></div><div><strong>−94.5<span>%</span></strong><b>夹瓶子平均 chunk 跳变</b><span>26.23 mm → 1.43 mm</span></div></div>
+<div class="execution-labels"><span>上排：原版 TT-RTC</span><span>下排：联合编辑</span></div>
+<figure class="video-figure" id="bottle-video"><video controls playsinline preload="metadata" poster="../assets/bottles-poster.jpg"><source src="../assets/bottles-comparison.mp4" type="video/mp4"></video><figcaption>原速视频 · 每组 3 次成功执行 · 从 rollout 开始对齐，以第四瓶放手为终点。chunk 跳变为切换计划时相邻指令的 TCP 距离。</figcaption></figure>
+<p class="other-tasks"><b>其他任务：</b>硬币抓取后至交接放手阶段缩短 20.7%；叠方块未见明显提速。这是一次有效、但收益有限的初步尝试。</p>
+</section></div>
+<section class="findings" id="tldr" aria-labelledby="tldr-title">
+<div class="finding-intro"><h2 id="tldr-title" class="findings-section-title"><span>FINDINGS /</span> Opus 发现了什么</h2>
+<p class="findings-section-summary">两处权重修改：一次提速，一个意外的 Bug 修复。</p>
+<p class="finding-lede">一个在 Training-Time RTC 官方公开实现中未处理的前缀 bug，一种调节动作节奏的 RoPE 干预。Opus 将两者写入新权重，保留原有生产推理代码。</p>
+<div class="research-context"><span>1 × RTX 4090</span><span>全程离线研究</span><span>无机器人交互</span></div></div>
+<div class="finding-grid">
+<section class="finding-card rtc-card" aria-labelledby="rtc-finding-title">
+<div class="finding-index"><span>01 / PREFIX REPAIR</span><span>意外发现</span></div>
+<div class="finding-overview"><div class="finding-problem"><h3 id="rtc-finding-title">Training-Time RTC 官方实现中，<br>未处理的前缀 bug。</h3>
+<p class="finding-summary">每轮去噪前，条件前缀都会恢复为给定动作；但<strong>最后一轮仍用预测的 velocity 再更新一次，随后直接返回，没有再次恢复前缀</strong>。这里的 velocity 是 flow matching 的生成更新量，不是机械臂物理速度。实际延迟短于预留前缀时，被改写的动作就可能进入执行。官方固定延迟示例丢弃整个前缀，因此没有暴露这一问题。</p>
+<p class="source-links">核对的官方源码 · <a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L253-L265">采样器</a> · <a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/eval_flow.py#L119-L126">固定延迟执行</a> · 9296f31d62d5</p>
+</div><div class="finding-mechanism"><div class="chunk-graphic" role="img" aria-label="6 步条件、丢弃 4 步。原版返回的 A5、A6 带有扰动；权重修复近似保留原动作。此图为示意。">
+<div class="diagram-label">PREFIX = 6 <span>LATENCY = 4</span></div><div class="chunk-row"><span class="chunk-name">Previous chunk</span><div class="chunk-cells"><span class="step kept">A1</span><span class="step kept">A2</span><span class="step kept">A3</span><span class="step kept">A4</span><span class="step kept">A5</span><span class="step kept">A6</span><span class="step new">A7</span><span class="step new">A8</span></div></div><div class="chunk-row"><span class="chunk-name">RTC return</span><div class="chunk-cells"><span class="step expired">A1</span><span class="step expired">A2</span><span class="step expired">A3</span><span class="step expired">A4</span><span class="step drift">A5*</span><span class="step drift">A6*</span><span class="step new">B7</span><span class="step new">B8</span></div></div><div class="chunk-row"><span class="chunk-name">Repaired return</span><div class="chunk-cells"><span class="step expired">A1</span><span class="step expired">A2</span><span class="step expired">A3</span><span class="step expired">A4</span><span class="step kept">A5</span><span class="step kept">A6</span><span class="step new">B7</span><span class="step new">B8</span></div></div>
+<div class="chunk-legend"><span class="legend-expired">已过期，丢弃</span><span class="legend-drift">* 最后一步扰动</span></div>
+</div>
+<div class="code-equivalent"><span>代码修复视角 · 返回前</span><a href="#e0-code">查看原代码与修改后代码 ↓</a></div></div></div>
+<div class="edit-story" id="e0-code"><h4>先看代码，哪里发生了变化</h4><div class="code-comparison"><section class="code-panel "><h5>修改前 · 源码节选（省略处已标记）</h5><pre><code>guided, model_input, time <span class="syntax-operator">=</span> <span class="syntax-function">sampling_input</span>(x, target, omega, sigma, config)
+<strong class="code-focus"><span class="syntax-keyword">return</span> guided <span class="syntax-operator">-</span> <span class="syntax-function">predict_velocity</span>(model_input, time) <span class="syntax-operator">/</span> num_steps</strong>
+<span class="syntax-comment"># ...</span>
+<span class="syntax-keyword">return</span> jax.lax.<span class="syntax-function">fori_loop</span>(<span class="syntax-number">0</span>, num_steps, step, noise)</code></pre></section><section class="code-panel code-after"><h5>代码对照 · 循环结束后恢复前缀</h5><pre><code>actions <span class="syntax-operator">=</span> jax.lax.<span class="syntax-function">fori_loop</span>(<span class="syntax-number">0</span>, num_steps, step, noise)
+<span class="syntax-comment"># Hard prefix mask: restore the conditioned steps.</span>
+<strong class="code-focus"><span class="syntax-keyword">return</span> omega <span class="syntax-operator">*</span> target <span class="syntax-operator">+</span> (<span class="syntax-number">1</span> <span class="syntax-operator">-</span> omega) <span class="syntax-operator">*</span> actions</strong></code></pre></section></div><p class="edit-note">对 0/1 硬掩码，这段代码对照等价于恢复 actions[:, :6] = target[:, :6]。下面的权重修改让前缀更新量接近零，近似实现同样行为；实际推理没有新增这行赋值。</p><p class="source-links"><a href="../assets/source/continuation.txt" target="_blank" rel="noopener">continuation.py · 82–103 ↗</a></p><details class="source-detail"><summary>展开实际权重修改代码 · 闭式求解</summary><section class="code-panel "><h5>K 为时间调制权重；W 为动作输出权重</h5><pre><code>u <span class="syntax-operator">=</span> np.linalg.<span class="syntax-function">lstsq</span>(A, rhs, rcond<span class="syntax-operator">=</span><span class="syntax-number">1e-10</span>)[<span class="syntax-number">0</span>]
+s_star <span class="syntax-operator">=</span> <span class="syntax-operator">-</span>np.linalg.<span class="syntax-function">lstsq</span>(W.T, bo, rcond<span class="syntax-operator">=</span><span class="syntax-keyword">None</span>)[<span class="syntax-number">0</span>]
+d <span class="syntax-operator">=</span> np.<span class="syntax-function">concatenate</span>([<span class="syntax-operator">-</span><span class="syntax-number">1.</span> <span class="syntax-operator">-</span> scale0, s_star <span class="syntax-operator">-</span> shift0, np.<span class="syntax-function">zeros</span>(<span class="syntax-number">1024</span>)])
+<strong class="code-focus">dK <span class="syntax-operator">=</span> np.<span class="syntax-function">outer</span>(u, d)</strong>
+<strong class="code-focus">K2 <span class="syntax-operator">=</span> K <span class="syntax-operator">+</span> dK</strong></code></pre></section><p>A 堆叠时间特征，rhs 选择前缀，scale0/shift0 是原调制值。只改 K，动作输出权重 W 与推理代码保持不变。</p><a href="../assets/source/e0.txt" target="_blank" rel="noopener">derive_e0_frozen_identity.py · 60–73 ↗</a> · <a href="../assets/source/gemma.txt" target="_blank" rel="noopener">gemma.py · 128–133 ↗</a></details></div>
+<div class="weight-derivation"><h4>Opus 如何修改时间调制权重</h4><ol><li><b>先确定零更新目标</b><p>将 scale 设为 −1，消去动作特征的影响；再求 shift = s*，使它经过原动作输出层后为零。</p><span class="derivation-math">\(s^*W_{\mathrm{out}}+b_{\mathrm{out}}=0\)</span></li><li><b>让改变量只在 t = 0 生效</b><p>以目标调制值减去原值，得到 d。利用时间特征 cₜ 求解 u：前缀启用 d，其他十个采样时刻不启用。</p><span class="derivation-math">\(c_0u=1,\qquad c_tu=0\)</span></li><li><b>把增量写入 W</b><p>用外积得到 ΔW。因为 cₜΔW = (cₜu)dᵀ，固定的权重增量就包含了按时间启用的效果。</p><span class="derivation-math">\(\Delta W=ud^{\mathsf T},\qquad W\prime=W+\Delta W\)</span></li></ol></div>
+<div class="evidence-strip"><span>离线切换步长 · 中位数</span><div><span>原版<b>19.16<small> mm</small></b></span><span>权重修复<b>1.80<small> mm</small></b></span><span>代码修复<b>1.88<small> mm</small></b></span></div><p>36 个相同输入 · 修复效果近似等价</p></div>
+<a class="finding-link" href="#s3-3">查看 bug、权重修改与代码对照 ↗</a>
+</section>
+<section class="finding-card rope-card" aria-labelledby="rope-finding-title">
+<div class="finding-index"><span>02 / RoPE POSITION SCALE</span><span>动作节奏</span></div>
+<div class="finding-overview"><div class="finding-problem"><h3 id="rope-finding-title">增大 RoPE 位置间隔，<br>让动作沿路线推进更多。</h3>
+<p class="finding-summary">Opus 将模型内部的动作位置从 P + i 改为 P + si，保持 30 Hz 执行频率。s = 1.25 时，离线路径进度比的中位数为 1.131，路径偏差为 1.229 mm。</p>
+</div><div class="finding-mechanism"><div class="rope-graphic" role="img" aria-label="示意：动作位置偏移从 0、1、2、3 变为 0、1.25、2.5、3.75，物理控制周期保持三十分之一秒。">
+<div class="diagram-label">ACTION POSITION <span>RELATIVE TO P</span></div>
+<svg viewBox="0 0 400 126" aria-hidden="true"><g font-family="Arial, sans-serif" font-size="13" fill="#55635e"><text x="0" y="28">Original</text><text x="0" y="91">RoPE teacher</text></g><path d="M112 22H376 M112 85H376" stroke="#d4ded8" stroke-width="2"/>
+<g fill="#7c8982"><circle cx="112" cy="22" r="5"/><circle cx="176" cy="22" r="5"/><circle cx="240" cy="22" r="5"/><circle cx="304" cy="22" r="5"/></g>
+<g fill="#277361"><circle cx="112" cy="85" r="6"/><circle cx="192" cy="85" r="6"/><circle cx="272" cy="85" r="6"/><circle cx="352" cy="85" r="6"/></g>
+<g font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#55635e"><text x="112" y="46">0</text><text x="176" y="46">1</text><text x="240" y="46">2</text><text x="304" y="46">3</text><text x="112" y="111">0</text><text x="192" y="111">1.25</text><text x="272" y="111">2.50</text><text x="352" y="111">3.75</text></g></svg>
+<p>控制周期不变：1/30 s</p></div>
+<div class="code-equivalent"><span>TEACHER 干预 · 伪代码</span><code>action_positions = P + 1.25 * i</code></div></div></div>
+<div class="diagnostic-charts"><h4>已有离线对照：间隔更大，不一定更好</h4><div class="chart-pair"><div><h5>路径进度比 ↑</h5><svg viewBox="0 0 460 225" role="img" aria-label="路径进度比 ↑"><path d="M55 30 V170 H430" stroke="#c5cec8" fill="none"/><text x="38" y="175">0</text><path d="M55 70 H430" stroke="#9b6b55" stroke-dasharray="4 4"/><text x="55" y="20">虚线：原版 = 1</text><rect x="75" y="84.9" width="46" height="85.1" rx="3" fill="#a7bcb3"><title>s=0.8: 0.851 ×</title></rect><text x="98" y="74.9" text-anchor="middle">0.851</text><text x="98" y="193" text-anchor="middle">0.8</text><rect x="167" y="56.900000000000006" width="46" height="113.1" rx="3" fill="#287763"><title>s=1.25: 1.131 ×</title></rect><text x="190" y="46.900000000000006" text-anchor="middle">1.131</text><text x="190" y="193" text-anchor="middle">1.25</text><rect x="259" y="52.5" width="46" height="117.5" rx="3" fill="#a7bcb3"><title>s=1.5: 1.175 ×</title></rect><text x="282" y="42.5" text-anchor="middle">1.175</text><text x="282" y="193" text-anchor="middle">1.5</text><rect x="351" y="69.10000000000001" width="46" height="100.89999999999999" rx="3" fill="#a7bcb3"><title>s=2.0: 1.009 ×</title></rect><text x="374" y="59.10000000000001" text-anchor="middle">1.009</text><text x="374" y="193" text-anchor="middle">2.0</text><text x="240" y="219" text-anchor="middle">RoPE 位置尺度 s</text></svg></div><div><h5>路径偏差（mm）↓</h5><svg viewBox="0 0 460 225" role="img" aria-label="路径偏差（mm）↓"><path d="M55 30 V170 H430" stroke="#c5cec8" fill="none"/><text x="38" y="175">0</text><rect x="75" y="149.382" width="46" height="20.618000000000002" rx="3" fill="#a7bcb3"><title>s=0.8: 0.793 mm</title></rect><text x="98" y="139.382" text-anchor="middle">0.793</text><text x="98" y="193" text-anchor="middle">0.8</text><rect x="167" y="138.046" width="46" height="31.954" rx="3" fill="#287763"><title>s=1.25: 1.229 mm</title></rect><text x="190" y="128.046" text-anchor="middle">1.229</text><text x="190" y="193" text-anchor="middle">1.25</text><rect x="259" y="119.69" width="46" height="50.31" rx="3" fill="#a7bcb3"><title>s=1.5: 1.935 mm</title></rect><text x="282" y="109.69" text-anchor="middle">1.935</text><text x="282" y="193" text-anchor="middle">1.5</text><rect x="351" y="48.475999999999985" width="46" height="121.52400000000002" rx="3" fill="#a7bcb3"><title>s=2.0: 4.674 mm</title></rect><text x="374" y="38.475999999999985" text-anchor="middle">4.674</text><text x="374" y="193" text-anchor="middle">2.0</text><text x="240" y="219" text-anchor="middle">RoPE 位置尺度 s</text></svg></div></div><p>直接 RoPE 干预 · 60 个观测中 58 个有效 · 跨观测中位数。绿色为选定的 s = 1.25。这里衡量预测路径，不是真机完成速度。</p></div>
+<a class="finding-link" href="#tab:rope-diagnostic">完整 RoPE 位置尺度对照 ↗</a>
+</section>
+<section class="finding-card qk-card" aria-labelledby="qk-finding-title">
+<div class="finding-index"><span>03 / TEMPO ACCELERATION</span><span>机制 → 权重</span></div>
+<div class="finding-problem"><h3 id="qk-finding-title">把 RoPE 干预效果，<br>拟合进 Q/K 权重。</h3>
+<p class="finding-summary">将位置干预作为 teacher，Opus 构造旋转后的 Q/K 目标，求解第 1–17 层的新投影权重，让候选模型沿用原推理代码与位置规则。</p></div>
+<div class="edit-story" id="qk-code"><h4>位置干预 → 等效旋转 → 权重拟合</h4><p>下列为简化伪代码。RoPE 前的 Q/K 额外旋转与 teacher 的位置修改在代数上等价；共享投影权重对该旋转的拟合只是近似。</p><div class="code-comparison three"><section class="code-panel "><h5>原版</h5><pre><code>q <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wq
+k <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wk
+Q <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(q, P <span class="syntax-operator">+</span> i)
+K <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(k, P <span class="syntax-operator">+</span> i)</code></pre></section><section class="code-panel code-after"><h5>Teacher · 修改位置规则</h5><pre><code>q <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wq
+k <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wk
+<strong class="code-focus">Q <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(q, P <span class="syntax-operator">+</span> <span class="syntax-number">1.25</span> <span class="syntax-operator">*</span> i)</strong>
+<strong class="code-focus">K <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(k, P <span class="syntax-operator">+</span> <span class="syntax-number">1.25</span> <span class="syntax-operator">*</span> i)</strong></code></pre></section><section class="code-panel code-after"><h5>候选 · 只替换权重</h5><pre><code><strong class="code-focus">q <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wq_fit   <span class="syntax-comment"># new weights</span></strong>
+<strong class="code-focus">k <span class="syntax-operator">=</span> X <span class="syntax-operator">@</span> Wk_fit   <span class="syntax-comment"># new weights</span></strong>
+Q <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(q, P <span class="syntax-operator">+</span> i)  <span class="syntax-comment"># original positions</span>
+K <span class="syntax-operator">=</span> <span class="syntax-function">rope</span>(k, P <span class="syntax-operator">+</span> i)</code></pre></section></div><p class="source-links"><a href="../assets/source/qk.txt" target="_blank" rel="noopener">e2b_qk_rotation.py · 147–187 ↗</a> · <a href="#tab:rope-diagnostic">完整位置诊断表</a></p></div>
+<div class="weight-derivation"><h4>Opus 如何构造 Y、拟合 ΔW</h4><ol><li><b>收集隐藏特征 X</b><p>用本地 demonstration 与历史 rollout 的观测运行模型，将各层 Q/K 投影前的隐藏特征逐行堆叠为 X。</p><span class="derivation-math">\(\text{Q/K}_0=XW_0\)</span></li><li><b>旋转原版 Q/K，得到目标 Y</b><p>对动作 i，将同一特征产生的原版 Q/K，额外旋转位置差 0.25i 对应的 RoPE 角度，补足 P+i 到 P+1.25i 的差异；将目标向量逐行堆叠为 Y。</p><span class="derivation-math">\(y_i=R(0.25i)\bigl(W_0^{\mathsf T}x_i\bigr)\)</span></li><li><b>拟合 W，再减去原权重</b><p>让 XW 接近 Y，同时用正则项限制偏离 W₀。对第 1–17 层的 Q、K 分别拟合；推理保留原版 RoPE。</p><span class="derivation-math">\(\begin{aligned}W_{\mathrm{fit}}=\arg\min_W\bigl[&\|XW-Y\|_F^2\\&+\lambda\|W-W_0\|_F^2\bigr]\end{aligned}\)</span></li></ol><div class="derivation-result"><span class="derivation-math">\(\Delta W=W_{\mathrm{fit}}-W_0,\qquad W\prime=W_0+\Delta W\)</span></div><p class="target-note">Y 来自已知旋转，不需要人工标注“更快的动作”。</p></div>
+<div class="evidence-strip"><span>离线路径进度比 · 原版 = 1</span><div><span>原版<b>1.000<small>×</small></b></span><span>仅节奏加速<b>1.199<small>×</small></b></span><span>路径偏差<b>1.08<small> mm</small></b></span></div><p>35 个有效测试输入 · 预测路径指标</p></div>
+<a class="finding-link" href="#s2-5">从 RoPE 干预到权重拟合 ↗</a>
+</section></div>
+<div class="research-takeaway"><span>AUTORESEARCH</span><p>值得关注的是它如何走到这一步：<strong>理解机制 → 提出并检验假设 → 根据失败修正方法 → 修改权重。</strong>我们要求提速，它还找到了前缀一致性的 bug。</p></div>
+</section>
+<details class="mobile-toc"><summary>文章目录</summary><nav aria-label="目录导航"><ol class="toc"><li class="toc-level-1"><a href="#introduction"><span></span>引言</a></li><li class="toc-level-1"><a href="#execution"><span></span>真机执行展示</a></li><li class="toc-level-1"><a href="#tldr"><span></span>Findings</a></li><li class="toc-level-2"><a href="#rtc-finding-title"><span>01</span>前缀修复</a></li><li class="toc-level-2"><a href="#rope-finding-title"><span>02</span>增大 RoPE 位置间隔</a></li><li class="toc-level-2"><a href="#qk-finding-title"><span>03</span>节奏加速</a></li><li class="toc-level-1"><a href="#abstract"><span></span>完整摘要</a></li><li class="toc-level-1"><a href="#s1"><span>1</span>我们的想法与研究条件</a></li><li class="toc-level-1"><a href="#s2"><span>2</span>Opus 5.5 的假设、验证与解法</a></li><li class="toc-level-2"><a href="#s2-1"><span>2.1</span>定位提速对象：推理等待与动作执行</a></li><li class="toc-level-2"><a href="#s2-2"><span>2.2</span>修复保留动作前缀中的 chunk 跳变</a></li><li class="toc-level-2"><a href="#s2-3"><span>2.3</span>动作节奏假设与 RoPE 位置干预</a></li><li class="toc-level-2"><a href="#s2-4"><span>2.4</span>首次尝试：仅拟合末端动作输出层</a></li><li class="toc-level-2"><a href="#s2-5"><span>2.5</span>转向注意力内部：拟合 Q/K 投影</a></li><li class="toc-level-2"><a href="#s2-6"><span>2.6</span>进一步施加参数约束，并与前缀修复合并验证</a></li><li class="toc-level-2"><a href="#s2-7"><span>2.7</span>交付与研究开销</a></li><li class="toc-level-1"><a href="#s3"><span>3</span>我们后续的实验与分析</a></li><li class="toc-level-2"><a href="#s3-1"><span>3.1</span>真机实验：任务用时与动作质量</a></li><li class="toc-level-2"><a href="#s3-2"><span>3.2</span>机制分析：哪些注意力变化保留了进度收益</a></li><li class="toc-level-2"><a href="#s3-3"><span>3.3</span>在参数空间修复前缀一致性问题</a></li><li class="toc-level-1"><a href="#closing-thoughts"><span></span>结语</a></li><li class="toc-level-1"><a href="#references"><span></span>参考文献</a></li></ol></nav></details>
+<details class="abstract abstract-fold" id="abstract"><summary>展开完整摘要</summary><p>当我们要求一个 Frontier Model 通过修改权重让机器人更快完成任务时，它会如何开展研究？我们向 Opus 5.5 提供预训练 <span class="math inline">\(\pi_{0.5}\)</span> 策略、源码、历史轨迹与一张 RTX 4090，要求不使用反向传播、不改变生产推理程序，并交付可回滚的独立权重。它从 RoPE 的机制出发，提出动作位置间隔可能影响预测节奏的假设，设计对照实验加以检验；在输出层拟合效果不佳后，转向注意力 Q/K 投影，将位置干预近似写入权重。它还在未被明确要求的前缀处理细节中发现问题，并通过另一项参数修改缓解 chunk 跳变。我们随后进行真机验证：放瓶子任务的完成时间缩短 4.3%，平均 chunk 跳变降低 94.5%；注意力区域干预进一步显示，动作之间的分数变化保留了较多离线进度收益。这些结果提供了初步的有效性证据，而本文更关注形成方案的研究过程：机制理解、假设提出、实验设计与失败后的方法修正如何共同构成 Weight-Space Editing。这个案例让我们得以具体讨论以及掀开未来的一角，Frontier Model将会以什么形式参与具身领域问题的发现与解决。</p>
+</details>
+<div class="article-content"><h2 id="s1"><span class="section-number">1 </span>我们的想法与研究条件<a aria-label="本节链接" class="heading-anchor" href="#s1">#</a></h2>
+<p>受 MIT 的 Weight-Space Programming <span class="citation" data-cites="wsp"><a href="#ref-wsp" role="doc-biblioref">[1]</a></span> 启发，我们想检验：Frontier Model 能否理解一个已训练机器人策略的参数，并通过少量修改让机器人更快地执行动作、完成任务？我们将这个问题交给 Opus 5.5，让模型根据机制与目标推导权重修改。</p>
+<p><strong>我们提供目标与环境，由 Opus 5.5 提出假设、设计实验并选择解法。</strong>环境包括一张 <strong>NVIDIA GeForce RTX 4090</strong>、已训练的 <span class="math inline">\(\pi_{0.5}\)</span> <span class="citation" data-cites="pi05"><a href="#ref-pi05" role="doc-biblioref">[2]</a></span> Training-Time RTC checkpoint、模型与推理源码、本地 demonstration 和历史机器人执行数据。它通过 Claude Code 调用工具开展离线研究。所用 demonstration 与历史执行轨迹均采自 YAM 机械臂，后续真机验证也由我们在 YAM 上完成。<strong>Opus 5.5 的自主研究全程未操控机器人，也未获取在线物理反馈，仅使用已有记录进行离线实验。</strong>它统计了<strong>136 条历史执行轨迹（5 类任务）与 154 条人类 demonstration（3 类任务）</strong>；实际编辑另从已有数据中选取 12 条 demonstration（6 类任务）和 12 条历史执行轨迹（4 类任务）。任务包括投硬币、抓移动方块、叠方块、放瓶子和按压旋转时钟。</p>
+<p>我们要求不使用反向传播、梯度优化器或 LoRA，允许前向实验和闭式拟合；尽量少改参数，保持生产推理与控制程序不变，并交付独立、可回滚的权重。20%–30% 的任务时间缩短是探索目标，稳定的 5%–10% 改善也有意义；需要检查平滑性和跨任务表现，并与原版、动作幅度缩放、轨迹时间缩放及随机权重修改比较。</p>
+<p>实际得到的方案，由机制假设、对照实验和方法修正逐步形成。<strong>我们关注的不只是权重修改后的性能，也包括 Opus 如何发现问题、检验解释，并在失败后改变方向。</strong>第二节介绍其研究过程，第三节报告我们补充的真机与机制实验，最后讨论这一案例对 Robotics AutoResearch 的启发。</p>
+<p>本文中，一个 action chunk 是策略一次预测的 50 步未来动作，每步包含两臂 12 个关节目标与 2 个夹爪目标，采样频率为 30 Hz。每轮执行 32 步，更新计划时将旧计划的前 6 步作为条件，即 RTC prefix。切换前后目标位置的突变称为 chunk 跳变；它描述命令的变化，而非机械臂瞬间移动。</p>
+<h2 id="s2"><span class="section-number">2 </span>Opus 5.5 的假设、验证与解法<a aria-label="本节链接" class="heading-anchor" href="#s2">#</a></h2><aside class="method-intro"><h3>先把整体思路讲清楚</h3><p>下文将两项权重修改分别称为<b>前缀修复</b>和<b>节奏加速</b>，两者合并称为<b>联合编辑</b>。</p><ol><li><b>先找时间花在哪里</b><p>模型推理在当前动作块执行完之前就能返回。因此问题转为：能不能让生成的动作在同样时间内，沿原来的路线推进更多？</p></li><li><b>先修好两段动作的交接 · 前缀修复</b><p>把相邻动作块想成两条有重叠的指令纸带：重叠部分本应一致。但最后一次采样更新扰动了预留前缀；权重修复抑制这部分更新，让交接处近似对齐。</p></li><li><b>再试着拉开模型内部的刻度 · RoPE</b><p>把动作位置想成模型内部尺子上的刻度。拉开刻度，机器人仍按 30 Hz 接收指令。改变的是注意力读取序列的方式，能否产生更快的动作还要通过实验检验。</p></li><li><b>把有效干预近似写进权重 · 节奏加速</b><p>直接改位置规则提高了离线路径推进后，将它对应的 Q/K 额外旋转作为拟合目标，求解新的投影权重，再用留出的观测检查生成动作。之后由研究者在真机上验证组合修改。</p></li></ol></aside>
+<h3 id="s2-1"><span class="section-number">2.1 </span>定位提速对象：推理等待与动作执行<a aria-label="本节链接" class="heading-anchor" href="#s2-1">#</a></h3>
+<p>Opus 5.5 首先检查任务耗时是否主要来自等待模型推理。它读取部署配置，并对照 136 条历史 RTC 轨迹中的推理时间、动作命令和实测关节状态。一次推理约需 105–109 ms，明显短于约 1.073 s 的计划更新周期；记录中也未出现以等待下一次推理为主的明显空窗。随后，它用 154 条 demonstration 中的动作速度与停顿作为参考，转向分析策略生成的动作。</p>
+<p>这一诊断将研究重点落在<strong>动作执行过程中的时间收益</strong>。Opus 5.5 沿两条线索继续验证：首先检查新旧 chunk 切换时的异常是否来自生成过程，再检验能否在保留任务路线的同时增加后续动作的推进量。前者形成前缀修复方案，后者形成节奏加速方案（通过 Q/K 投影编辑实现）；两者合并称为联合编辑。</p>
+<h3 id="s2-2"><span class="section-number">2.2 </span>修复保留动作前缀中的 chunk 跳变<a aria-label="本节链接" class="heading-anchor" href="#s2-2">#</a></h3>
+<p>Opus 5.5 比较模型输出与实际执行命令后发现：前 6 步作为条件输入，但生成结果偏离了这些旧动作；部署通常只裁掉过期的前 4 步，剩余第 5、6 步的偏差便进入执行。原因是最后一次 flow matching 积分后，前缀没有再次恢复。</p>
+<p><strong>Opus 5.5 计算权重增量矩阵 <span class="math inline">\(\Delta W\)</span>，将 <span class="math inline">\(W'=W+\Delta W\)</span> 保存到新 checkpoint。Opus 修改的是最终归一化层里，将时间特征映射为 scale、shift 的线性层权重 <span class="math inline">\(W\)</span></strong>（图 <a data-reference="fig:e0-location" data-reference-type="ref" href="#fig:e0-location">1</a>），即 <code>final_norm_1.Dense_0.kernel</code>。<span class="math inline">\(\Delta W\)</span> 与它同为 <span class="math inline">\(1024\times3072\)</span>，逐项指定权重增量。目标是让前缀更新量接近零，同时保持其他采样时刻的输出；推理代码不变。</p>
+<figure data-latex-placement="ht" id="fig:e0-location">
+<a class="figure-link" href="../assets/e0-location.png" rel="noopener" target="_blank" title="查看原图"><img alt="前缀修复只将绿色时间投影层改为 \(W'\) 。时间特征 \(c_t\) 在最终归一化处调制动作特征 \(x_t\) ；动作输出投影不变。" decoding="async" loading="lazy" src="../assets/e0-location.png"/></a>
+<figcaption><strong>图 1. </strong>前缀修复只将绿色时间投影层改为 <span class="math inline">\(W'\)</span>。时间特征 <span class="math inline">\(c_t\)</span> 在最终归一化处调制动作特征 <span class="math inline">\(x_t\)</span>；动作输出投影不变。</figcaption>
+</figure>
+<p><strong>原版时间调制过程如图 <a data-reference="fig:e0-location" data-reference-type="ref" href="#fig:e0-location">1</a> 所示，原版在绿色位置使用 <span class="math inline">\(W\)</span>。</strong>前缀使用生成时间条件 <span class="math inline">\(t=0\)</span>，其他动作使用 <span class="math inline">\(1.0,0.9,\ldots,0.1\)</span>；<span class="math inline">\(t\)</span> 不是物理执行时间。时间编码及 <code>time_mlp_in/out</code> 将 <span class="math inline">\(t\)</span> 映射为 1024 维特征 <span class="math inline">\(c_t\)</span>，其中 <span class="math inline">\(c_0\)</span> 不是零向量。对单个动作 token，令 <span class="math inline">\(x_t\)</span> 为它经过 18 层 Transformer 后的隐藏特征；<span class="math inline">\(m_t\)</span> 则是时间分支算出的三组调制值。原版模型通过 scale 和 shift 调整 <span class="math inline">\(x_t\)</span>： <span class="equation" id="eq:e0-modulation"><span class="math display">\[
+\begin{aligned}
+m_t&amp;=[\mathrm{scale}_t,\mathrm{shift}_t,\mathrm{gate}_t]=c_tW+b,\\
+x_{\mathrm{out},t}&amp;=\operatorname{RMSNorm}(x_t)\odot(1+\mathrm{scale}_t)+\mathrm{shift}_t,\\
+v_t&amp;=x_{\mathrm{out},t}W_{\mathrm{out}}+b_{\mathrm{out}}.
+\end{aligned}
+
+\]</span><a aria-label="Equation 1" class="equation-number" href="#eq:e0-modulation">(1)</a></span> 这组公式是原版已有的计算，Opus 沿用它来推导编辑目标。<span class="math inline">\(\odot\)</span> 表示逐元素乘法，gate 在此未使用。<span class="math inline">\(W_{\mathrm{out}},b_{\mathrm{out}}\)</span> 属于线性层 <code>action_out_proj</code>，不是时间 MLP；其输出 <span class="math inline">\(v_t\)</span> 是采样更新量。前缀修复保留 <span class="math inline">\(b,W_{\mathrm{out}},b_{\mathrm{out}}\)</span>，只替换 <span class="math inline">\(W\)</span>。</p>
+<p><strong>第一步：设定能让前缀更新量为零的目标。</strong>以下带撇号的量表示编辑后。Opus 将 scale 的目标设为全 <span class="math inline">\(-1\)</span>，再求最小范数的 <span class="math inline">\(s^*\)</span>，使它经线性动作输出层后为零： <span class="equation" id="eq:e0-zero"><span class="math display">\[
+\begin{aligned}
+\mathrm{scale}'_0&amp;=-\mathbf1,\qquad\mathrm{shift}'_0=s^*,\qquad s^*W_{\mathrm{out}}+b_{\mathrm{out}}=0,\\
+x'_{\mathrm{out},0}&amp;=\operatorname{RMSNorm}(x_0)\odot\mathbf0+s^*=s^*,\qquad v'_0=0.
+\end{aligned}
+
+\]</span><a aria-label="Equation 2" class="equation-number" href="#eq:e0-zero">(2)</a></span> 因此不需要令 Transformer 的输出 <span class="math inline">\(x_0\)</span> 本身为零；目标 scale 会消去它的影响，目标 shift 则令最终特征等于 <span class="math inline">\(s^*\)</span>，并抵消输出层偏置。</p>
+<p><strong>第二步：计算调制值的目标改变量。</strong>以目标减原值，得到 <span class="math inline">\(d^{\mathsf T}\)</span>；加回原调制值即可检查它是否达到目标： <span class="equation" id="eq:e0-rank-one"><span class="math display">\[
+\begin{aligned}
+d^{\mathsf T}&amp;=[-\mathbf1-\mathrm{scale}_0,\ s^*-\mathrm{shift}_0,\ \mathbf0],\\
+m_0+d^{\mathsf T}&amp;=[\mathrm{scale}_0,\mathrm{shift}_0,\mathrm{gate}_0]+d^{\mathsf T}
+=[-\mathbf1,s^*,\mathrm{gate}_0].
+\end{aligned}
+
+\]</span><a aria-label="Equation 3" class="equation-number" href="#eq:e0-rank-one">(3)</a></span> <strong>第三步：求解 <span class="math inline">\(u\)</span>，使增量只作用于前缀。</strong>Opus 将 10 个采样时刻的时间特征与前缀 <span class="math inline">\(t=0\)</span> 的时间特征逐行堆叠，组成 <span class="math inline">\(A\in\mathbb R^{11\times1024}\)</span>。它要找 1024 维系数 <span class="math inline">\(u\)</span>，使前缀的点积 <span class="math inline">\(c_0u=1\)</span>，其余十个点积 <span class="math inline">\(c_tu=0\)</span>。把这些目标组成向量 <span class="math inline">\(r\)</span>，统一求解： <span class="equation" id="eq:e0-u-solve"><span class="math display">\[
+\begin{aligned}
+A&amp;=\operatorname{stack}_{\mathrm{rows}}(c_0,c_{1.0},c_{0.9},\ldots,c_{0.1}),\qquad r=(1,0,\ldots,0)^{\mathsf T},\\
+u&amp;=\underset{z}{\operatorname{argmin}}\,\|Az-r\|_2^2\qquad\text{(minimum-norm solution)}.
+\end{aligned}
+
+\]</span><a aria-label="Equation 4" class="equation-number" href="#eq:e0-u-solve">(4)</a></span> <span class="math inline">\(c_0u=1\)</span> 表示给前缀加上完整的 <span class="math inline">\(d^{\mathsf T}\)</span>；其余点积为 0 表示不加。<span class="math inline">\(c_0\)</span> 来自原模型，<span class="math inline">\(u\)</span> 来自这次求解。</p>
+<p><strong>写回权重并检查效果。</strong>我们希望时间特征经过新权重后，恰好多出 <span class="math inline">\((c_tu)d^{\mathsf T}\)</span>。由于矩阵乘法满足结合律，这等于 <span class="math inline">\(c_t(ud^{\mathsf T})\)</span>；因此将 <span class="math inline">\(ud^{\mathsf T}\)</span> 作为权重增量即可： <span class="equation" id="eq:e0-selective"><span class="math display">\[
+\begin{aligned}
+&amp;\Delta W=ud^{\mathsf T},\qquad W'=W+\Delta W,\qquad W'_{ij}=W_{ij}+u_i d_j,\\
+&amp;c_t\Delta W=c_t(ud^{\mathsf T})=(c_tu)d^{\mathsf T},\\
+&amp;m'_t=c_t(W+\Delta W)+b=m_t+(c_tu)d^{\mathsf T}.
+\end{aligned}
+
+\]</span><a aria-label="Equation 5" class="equation-number" href="#eq:e0-selective">(5)</a></span> <span class="math inline">\(\Delta W\)</span> 的第 <span class="math inline">\(i\)</span> 行为 <span class="math inline">\(u_i d^{\mathsf T}\)</span>：所有行都由同一个向量缩放得到，只有一个独立方向，因此这是一项秩一修改。</p>
+<p>在 36 个 demonstration 与 24 个历史执行观测上，前缀关节误差由约 0.095 rad 降至 <span class="math inline">\(4.49\times10^{-4}\)</span> rad，后续动作最大变化约为 0.0034 rad，路径进度几乎不变。Opus 5.5 因此保留这一前缀修复，继续寻找提速方法；我们对该问题的代码与实验核对见第 <a data-reference="sec:prefix-audit" data-reference-type="ref" href="#s3-3">3.3</a> 节。</p>
+<h3 id="s2-3"><span class="section-number">2.3 </span>动作节奏假设与 RoPE 位置干预<a aria-label="本节链接" class="heading-anchor" href="#s2-3">#</a></h3>
+<p>前缀修复没有让后续动作推进得更快。对于提速，Opus 5.5 在读取模型代码时提出：“My leading hypothesis is that action timing depends on RoPE positions.” 我们进一步展开这一假设：<strong>模型可能学到了动作位置间隔与动作位移的隐式联系；增大内部位置间隔、保持实际控制周期不变，可能让相同时间内的有效位移增加。</strong></p>
+<p>图 <a data-reference="fig:rope-position" data-reference-type="ref" href="#fig:rope-position">2</a> 先概括这一步：改变模型读取动作序列的位置坐标，再检验预测动作是否推进得更快。</p>
+<figure data-latex-placement="htbp" id="fig:rope-position"><div class="rope-demo" hidden="">
+<div class="mechanism-heading"><b>拉开内部位置，保持执行时钟。</b><span>原理示意</span></div>
+<div class="rope-demo-visuals">
+<svg aria-label="内部动作位置间隔增大；执行时刻不变。" class="position-timeline" role="img" viewbox="0 0 555 245">
+<path class="axis" d="M 140 43 H 540 M 140 104 H 540 M 270 170 H 540"></path>
+<rect class="context-zone" height="132" rx="8" width="126" x="132" y="8"></rect><g class="context-point"><circle cx="150" cy="43" r="5"></circle><text text-anchor="middle" x="150" y="66">…</text></g><g class="context-point"><circle cx="200" cy="43" r="5"></circle><text text-anchor="middle" x="200" y="66">P−2</text></g><g class="context-point"><circle cx="240" cy="43" r="5"></circle><text text-anchor="middle" x="240" y="66">P−1</text></g><g class="context-point"><circle cx="150" cy="104" r="5"></circle><text text-anchor="middle" x="150" y="127">…</text></g><g class="context-point"><circle cx="200" cy="104" r="5"></circle><text text-anchor="middle" x="200" y="127">P−2</text></g><g class="context-point"><circle cx="240" cy="104" r="5"></circle><text text-anchor="middle" x="240" y="127">P−1</text></g><path class="context-boundary" d="M 264 8 V 143"></path><text class="context-label" text-anchor="middle" x="195" y="227">上下文 · 不移动</text><text class="context-label" text-anchor="middle" x="400" y="227">动作位置 · 拉开间隔</text>
+<text x="0" y="48">原版 P + i</text><g class="base-points"><circle cx="280" cy="43" r="5"></circle><text text-anchor="middle" x="280" y="27">a0</text><circle cx="345" cy="43" r="5"></circle><text text-anchor="middle" x="345" y="27">a1</text><circle cx="410" cy="43" r="5"></circle><text text-anchor="middle" x="410" y="27">a2</text><circle cx="475" cy="43" r="5"></circle><text text-anchor="middle" x="475" y="27">a3</text></g>
+<text x="0" y="109">Teacher P + si</text><g class="edited-points"><g data-position="0"><circle cy="104" r="6"></circle><text text-anchor="middle" y="88">a0</text><text class="coordinate" text-anchor="middle" y="129"></text></g><g data-position="1"><circle cy="104" r="6"></circle><text text-anchor="middle" y="88">a1</text><text class="coordinate" text-anchor="middle" y="129"></text></g><g data-position="2"><circle cy="104" r="6"></circle><text text-anchor="middle" y="88">a2</text><text class="coordinate" text-anchor="middle" y="129"></text></g><g data-position="3"><circle cy="104" r="6"></circle><text text-anchor="middle" y="88">a3</text><text class="coordinate" text-anchor="middle" y="129"></text></g></g>
+<text x="0" y="175">执行时刻</text><g class="clock-ticks"><path d="M 280 165 v 10"></path><text text-anchor="middle" x="280" y="194">0/30 s</text><path d="M 345 165 v 10"></path><text text-anchor="middle" x="345" y="194">1/30 s</text><path d="M 410 165 v 10"></path><text text-anchor="middle" x="410" y="194">2/30 s</text><path d="M 475 165 v 10"></path><text text-anchor="middle" x="475" y="194">3/30 s</text></g>
+</svg>
+<svg aria-label="一对 Q 或 K 通道的额外旋转。" class="rotation-pair" role="img" viewbox="0 0 240 215">
+<text text-anchor="middle" x="120" y="19">一对 Q/K 通道</text>
+<circle class="unit-circle" cx="120" cy="108" r="62"></circle>
+<path class="axis" d="M 45 108 H 195 M 120 33 V 183"></path>
+<path class="base-ray" d="M 120 108 L 178.24 86.74"></path>
+<path class="angle-arc"></path><path class="edit-ray"></path>
+<circle class="edit-tip" r="4"></circle>
+<text class="rotation-value" text-anchor="middle" x="120" y="207">Δθ = 0.75 rad</text>
+</svg></div>
+<div class="rope-status"><span>位置尺度 s = <output>1.00</output></span><span>i = 3 · m = 0</span><span>30 Hz · 保持不变</span></div>
+<p class="rope-demo-note">蓝线是原版方向，绿线是动作 i = 3、通道对 m = 0 增加旋转后的方向。Δθ = (s − 1)iωₘ。原版方向采用任意示意角度，向量长度保持不变；不同通道对的旋转速率不同。这是注意力内部的表示，不是机器人关节转角。</p>
+<div class="rope-weight-story"><b>这个旋转怎样变成权重修改？</b><p>先在 teacher 中改变位置规则，检查生成动作；再将原版 Q/K 多转这个角度，得到拟合目标；最后求解能近似产生这些目标的新 Q/K 权重。候选模型推理时仍用原版位置规则，由新权重近似补上额外旋转。</p></div>
+</div>
+<a class="figure-link" href="../assets/rope-position.png" rel="noopener" target="_blank" title="查看原图"><img alt="RoPE 位置干预：内部动作位置间隔放大，实际执行时钟不变；对应变化是每对 Q/K 通道的额外旋转。圆图为原理示意。" decoding="async" loading="lazy" src="../assets/rope-position.png"/></a>
+<figcaption><strong>图 2. </strong>RoPE 位置干预：内部动作位置间隔放大，实际执行时钟不变；对应变化是每对 Q/K 通道的额外旋转。圆图为原理示意。</figcaption>
+</figure>
+<h4 id="实现改变动作位置对应的-qk-旋转">实现：改变动作位置对应的 Q/K 旋转。</h4>
+<p>令 <span class="math inline">\(i=0,\ldots,49\)</span> 为动作序号、<span class="math inline">\(P\)</span> 为上下文 token 数。内部位置改变，实际执行间隔 <span class="math inline">\(\Delta t=1/30\)</span> s 保持不变： <span class="equation" id="eq:position"><span class="math display">\[
+p_i=P+i,\qquad p_i^{(s)}=P+si,\qquad t_i^{\rm exec}=t_0+i\Delta t.
+
+\]</span><a aria-label="Equation 6" class="equation-number" href="#eq:position">(6)</a></span> RoPE 将位置编码为 Q/K 的旋转 <span class="citation" data-cites="rope"><a href="#ref-rope" role="doc-biblioref">[3]</a></span>： <span class="equation" id="eq:qk"><span class="math display">\[
+q_i=W_Q^{\mathsf T}x_i,\quad k_i=W_K^{\mathsf T}x_i,
+\qquad Q_i=R(p_i)q_i,\quad K_i=R(p_i)k_i.
+
+\]</span><a aria-label="Equation 7" class="equation-number" href="#eq:qk">(7)</a></span> <span class="math inline">\(x_i\in\mathbb R^{1024}\)</span> 是投影前的隐藏特征，<span class="math inline">\(W_Q,W_K\in\mathbb R^{1024\times256}\)</span> 是单个 head 的投影权重。在每个 256 维 head 内，第 <span class="math inline">\(m\)</span> 与 <span class="math inline">\(m+128\)</span> 个通道配对旋转，<span class="math inline">\(m=0,\ldots,127\)</span>。对其中一对 <span class="math inline">\((a,b)\)</span>， <span class="equation" id="eq:rotation"><span class="math display">\[
+\begin{bmatrix}a'\\b'\end{bmatrix}=
+\begin{bmatrix}\cos\theta&amp;-\sin\theta\\\sin\theta&amp;\cos\theta\end{bmatrix}
+\begin{bmatrix}a\\b\end{bmatrix},\qquad
+\theta=p\,10000^{-m/128}.
+
+\]</span><a aria-label="Equation 8" class="equation-number" href="#eq:rotation">(8)</a></span> <span class="math inline">\(R(p)\)</span> 表示全部 128 对通道的旋转。固定旋转前的内容向量，动作 <span class="math inline">\(i,j\)</span> 的内积由原版变为 <span class="equation" id="eq:relative"><span class="math display">\[
+Q_i^{\mathsf T}K_j=q_i^{\mathsf T}R(j-i)k_j,\qquad
+(Q_i^{(s)})^{\mathsf T}K_j^{(s)}=q_i^{\mathsf T}R\bigl(s(j-i)\bigr)k_j.
+
+\]</span><a aria-label="Equation 9" class="equation-number" href="#eq:relative">(9)</a></span> 因此，干预放大的是动作之间的相对位置间隔。动作 Q 对保持不变的图像、文本和状态 K 的读取也会变化；经过 softmax 和对 V 的加权，影响后续动作生成。它不直接放大 V 或关节目标。</p>
+<h4 id="检验位置干预是否增加沿原路线的推进">检验：位置干预是否增加沿原路线的推进。</h4>
+<p>Opus 5.5 执行两组对照：（1）在 36 个 demonstration 观测与 24 个历史执行观测上，将全部 18 层动作位置改为 <span class="math inline">\(P+si\)</span>，测试 <span class="math inline">\(s=0.8,1.25,1.5,2.0\)</span>；（2）在 36 个 demonstration 观测上保持 RoPE 不变，只将提供给模型的前 6 步动作加快至原来的 1.25、1.5、2.0 倍。各干预与原版使用相同观测和初始噪声。</p>
+<p>它先将原版预测按不同倍速重采样，寻找与干预后关节轨迹最接近的速度：<span class="math inline">\(s=1.25\)</span> 的 RoPE 干预对应约 1.12 倍，而仅加快前缀对应约 1.01 倍。因此，它继续研究位置干预。</p>
+<p>随后，Opus 5.5 检验：<strong>在相同预测时刻，编辑版是否沿原版规划的路线走得更远。</strong>它进行正向运动学计算，将原版 TCP pose 的位置连成参考路线。将编辑版位置匹配到路线最近点，以该点的累计沿路距离除以原版同一时刻的沿路距离，得到<strong>路径进度比</strong>；编辑版各位置到路线的最近距离的均值为<strong>路径偏差</strong>（图 <a data-reference="fig:path-metrics" data-reference-type="ref" href="#fig:path-metrics">3</a>）。</p>
+<figure data-latex-placement="htbp" id="fig:path-metrics">
+<a class="figure-link" href="../assets/path-metrics.png" rel="noopener" target="_blank" title="查看原图"><img alt="两项路径指标。（a）同一时刻原版推进 50 mm，编辑版对应参考路线上的 60 mm，进度比为 1.2。（b）对编辑位置到参考路线的最近距离取平均，得到路径偏差。" decoding="async" loading="lazy" src="../assets/path-metrics.png"/></a>
+<figcaption><strong>图 3. </strong>两项路径指标。（a）同一时刻原版推进 50 mm，编辑版对应参考路线上的 60 mm，进度比为 1.2。（b）对编辑位置到参考路线的最近距离取平均，得到路径偏差。</figcaption>
+</figure>
+<p>计算排除前 6 步条件。令 <span class="math inline">\(c_0(u)\)</span> 为原版第 6–49 步连成并插值的 TCP 路线，<span class="math inline">\(L_0(u)\)</span> 为从第 6 步到 <span class="math inline">\(u\)</span> 的沿路距离，<span class="math inline">\(e_r\)</span> 为编辑版第 <span class="math inline">\(r\)</span> 步的位置，<span class="math inline">\(\mathcal I=\{6,\ldots,37\}\)</span>。最近点、进度比和偏差为 <span class="equation" id="eq:progress"><span class="math display">\[
+\begin{aligned}
+u_r^*&amp;=\arg\min_{u\in[6,49]}\|e_r-c_0(u)\|_2,\\
+g_r&amp;=\frac{L_0(u_r^*)}{L_0(r)},\qquad
+\bar d=\frac{1}{|\mathcal I|}\sum_{r\in\mathcal I}\|e_r-c_0(u_r^*)\|_2.
+\end{aligned}
+
+\]</span><a aria-label="Equation 10" class="equation-number" href="#eq:progress">(10)</a></span> 表 <a data-reference="tab:rope-diagnostic" data-reference-type="ref" href="#tab:rope-diagnostic">1</a> 报告 <span class="math inline">\(g_{37}\)</span> 与 <span class="math inline">\(\bar d\)</span>（mm）。原版在比较区间内移动不足 15 mm 的手臂不纳入；每个观测内平均有效手臂，再跨观测取中位数。</p>
+<div id="tab:rope-diagnostic">
+<p class="table-caption" id="table-caption-1"><strong>表 1. </strong>位置尺度与前缀加速对照。Opus 5.5 保存逐样本指标，我们按有效观测取中位数；RoPE 组为 60 个输入中的 58 个，前缀组为 36 个中的 34 个。</p><div aria-labelledby="table-caption-1" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">干预</th>
+<th scope="col" style="text-align: right;">尺度</th>
+<th scope="col" style="text-align: right;">纳入统计的观测数</th>
+<th scope="col" style="text-align: right;">路径进度比</th>
+<th scope="col" style="text-align: right;">路径偏差</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">动作 RoPE</td>
+<td style="text-align: right;">0.80</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">0.851</td>
+<td style="text-align: right;">0.793</td>
+</tr>
+<tr>
+<td style="text-align: left;">动作 RoPE</td>
+<td style="text-align: right;">1.25</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">1.131</td>
+<td style="text-align: right;">1.229</td>
+</tr>
+<tr>
+<td style="text-align: left;">动作 RoPE</td>
+<td style="text-align: right;">1.50</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">1.175</td>
+<td style="text-align: right;">1.935</td>
+</tr>
+<tr>
+<td style="text-align: left;">动作 RoPE</td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">1.009</td>
+<td style="text-align: right;">4.674</td>
+</tr>
+<tr>
+<td style="text-align: left;">RTC 前缀时间压缩</td>
+<td style="text-align: right;">1.25</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">1.004</td>
+<td style="text-align: right;">0.492</td>
+</tr>
+<tr>
+<td style="text-align: left;">RTC 前缀时间压缩</td>
+<td style="text-align: right;">1.50</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">1.004</td>
+<td style="text-align: right;">0.796</td>
+</tr>
+<tr>
+<td style="text-align: left;">RTC 前缀时间压缩</td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: right;">1.007</td>
+<td style="text-align: right;">1.134</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p>表 <a data-reference="tab:rope-diagnostic" data-reference-type="ref" href="#tab:rope-diagnostic">1</a> 显示，<span class="math inline">\(s=1.25\)</span> 和 <span class="math inline">\(1.5\)</span> 增加进度，<span class="math inline">\(2.0\)</span> 的收益基本消失且偏差增大；仅加快前缀的作用很小。<strong>我们推测，固定采样间隔下学到的时间与动作映射，可能使位置缩放的收益存在限度。</strong>这是对非单调趋势的解释，尚不是已验证的原因。</p>
+<p>Opus 5.5 选择 <span class="math inline">\(s=1.25\)</span> 为主要目标。这个干预改的是动作专家注意力中的位置规则，权重不变。为了保持生产推理代码不变，它将此模型作为<strong>直接 RoPE teacher</strong>，尝试把干预效果内化到与原版结构相同的新权重中。</p>
+<h3 id="s2-4"><span class="section-number">2.4 </span>首次尝试：仅拟合末端动作输出层<a aria-label="本节链接" class="heading-anchor" href="#s2-4">#</a></h3>
+<p><strong>要检验的最小改动：仅改最后一层，能否复现 teacher 的最终动作？</strong>Opus 5.5 首先拟合从 1024 维特征到 14 个动作更新通道的输出层。teacher 提供最终动作 <span class="math inline">\(A_i^T\)</span>；候选第 <span class="math inline">\(k\)</span> 轮、位置 <span class="math inline">\(i\)</span> 的状态为 <span class="math inline">\(z_{k,i}\)</span>，末端隐藏特征为 <span class="math inline">\(h_{k,i}\)</span>，剩余生成时间为 <span class="math inline">\(\sigma_k=1-k/10\)</span>： <span class="equation" id="eq:e1"><span class="math display">\[
+\begin{aligned}
+v_{k,i}^{*}&amp;=\frac{z_{k,i}-A_i^T}{\sigma_k},\qquad
+v_{k,i}=B^{\mathsf T}h_{k,i}+b_0,\\
+z_{k+1,i}&amp;=z_{k,i}-0.1v_{k,i},\qquad k=0,\ldots,9,\quad i\geq6.
+\end{aligned}
+
+\]</span><a aria-label="Equation 11" class="equation-number" href="#eq:e1">(11)</a></span> <span class="math inline">\(v^*\)</span> 是朝 teacher 最终动作推进的目标更新量，不是机械臂速度。Opus 5.5 用带原权重正则的最小二乘拟合 <span class="math inline">\(B\)</span>，偏置 <span class="math inline">\(b_0\)</span> 固定；采样器迭代 10 次得到最终动作（图 <a data-reference="fig:head-distill" data-reference-type="ref" href="#fig:head-distill">4</a>）。</p>
+<figure data-latex-placement="htbp" id="fig:head-distill">
+<a class="figure-link" href="../assets/output-head-distillation.png" rel="noopener" target="_blank" title="查看原图"><img alt="仅拟合绿色输出层，目标由 teacher 的最终动作构造；输出参与 10 步迭代生成。其他权重及原生 RoPE 不变。" decoding="async" loading="lazy" src="../assets/output-head-distillation.png"/></a>
+<figcaption><strong>图 4. </strong>仅拟合绿色输出层，目标由 teacher 的最终动作构造；输出参与 10 步迭代生成。其他权重及原生 RoPE 不变。</figcaption>
+</figure>
+<p><strong>分别检查拟合重建与新输入上的迁移。</strong>令 <span class="math inline">\(a_{i,j},a^T_{i,j}\)</span> 为候选与 teacher 的最终关节目标，<span class="math inline">\(j\)</span> 遍历 12 个关节；每个观测的关节误差为 <span class="equation" id="eq:joint-rms"><span class="math display">\[
+E_{\rm RMS}=\sqrt{\frac{1}{32\times12}\sum_{i=6}^{37}\sum_{j=1}^{12}(a_{i,j}-a^T_{i,j})^2}.
+
+\]</span><a aria-label="Equation 12" class="equation-number" href="#eq:joint-rms">(12)</a></span> 它先平方、平均再开根，以 rad 报告，再对观测取平均。为检查动作是否剧烈变化，对 TCP 位置 <span class="math inline">\(\mathbf p_i\)</span> 计算加速度的变化率 jerk： <span class="equation" id="eq:jerk"><span class="math display">\[
+\mathbf j_i=\frac{\mathbf p_{i+3}-3\mathbf p_{i+2}+3\mathbf p_{i+1}-\mathbf p_i}{\Delta t^3},\qquad
+J=\sqrt{\frac1{29}\sum_{i=6}^{34}\|\mathbf j_i\|_2^2}.
+
+\]</span><a aria-label="Equation 13" class="equation-number" href="#eq:jerk">(13)</a></span> 报告 <span class="math inline">\(J_{\rm edit}/J_{\rm orig}\)</span>，在观测内平均有效手臂；它不包含 chunk 切换，需与路径进度及偏差一起解释。</p>
+<p>24 个 demonstration 观测上拟合三轮后，关节 RMS 为 0.0050 rad；另 12 个 demonstration 与 16 个历史执行观测上，误差增至 0.0239 rad，平均路径偏差为 8.256 mm，jerk 比为 3.245。<strong>重建效果未延续到测试输入，Opus 5.5 因而放弃输出层拟合，转向注意力内部。</strong></p>
+<h3 id="s2-5"><span class="section-number">2.5 </span>转向注意力内部：拟合 Q/K 投影<a aria-label="本节链接" class="heading-anchor" href="#s2-5">#</a></h3>
+<p>Opus 5.5 将拟合目标从最终动作移到 Q/K 表示：目标由已知旋转直接计算，再由新权重近似复现（图 <a data-reference="fig:qk-weight-fit" data-reference-type="ref" href="#fig:qk-weight-fit">5</a>）。</p>
+<figure data-latex-placement="htbp" id="fig:qk-weight-fit">
+<a class="figure-link" href="../assets/qk-weight-fit.png" rel="noopener" target="_blank" title="查看原图"><img alt="用同一隐藏特征的原版 Q/K 经过额外旋转构造 \(Y\) ，再拟合并保存新权重；推理仍使用原版 RoPE。" decoding="async" loading="lazy" src="../assets/qk-weight-fit.png"/></a>
+<figcaption><strong>图 5. </strong>用同一隐藏特征的原版 Q/K 经过额外旋转构造 <span class="math inline">\(Y\)</span>，再拟合并保存新权重；推理仍使用原版 RoPE。</figcaption>
+</figure>
+<p><strong>第一步：构造中间表示目标。</strong>要让候选保留原生 RoPE <span class="math inline">\(R(P+i)\)</span>，同时近似 teacher 的 <span class="math inline">\(R(P+si)\)</span>，需在投影输出中补上额外旋转： <span class="equation" id="eq:compose"><span class="math display">\[
+R(P+i)R(\delta_i)=R(P+si),\qquad \delta_i=(s-1)i.
+
+\]</span><a aria-label="Equation 14" class="equation-number" href="#eq:compose">(14)</a></span> 因此，分别对 Q 和 K 构造目标： <span class="equation" id="eq:targets"><span class="math display">\[
+y_i^Q=R(\delta_i)W_{Q,0}^{\mathsf T}x_i,\quad
+ y_i^K=R(\delta_i)W_{K,0}^{\mathsf T}x_i.
+
+\]</span><a aria-label="Equation 15" class="equation-number" href="#eq:targets">(15)</a></span> 目标 <span class="math inline">\(y_i\)</span> 来自同一隐藏特征 <span class="math inline">\(x_i\)</span> 的原版 Q/K 加已知旋转，无需更快动作的人工标签。</p>
+<p><strong>第二步：采集特征并闭式拟合。</strong>Opus 5.5 先检查特征采集前向是否改变原版输出，关节 RMS 为约 0.00037–0.00044 rad，低于采用的 0.002 rad 容差，才将特征和目标按行堆成 <span class="math inline">\(X\in\mathbb R^{N\times1024}\)</span>、<span class="math inline">\(Y\in\mathbb R^{N\times256}\)</span>，求解 <span class="equation" id="eq:ridge"><span class="math display">\[
+\begin{aligned}
+W_{\rm fit}&amp;=\arg\min_W\left(\|XW-Y\|_F^2+\lambda_{\rm abs}\|W-W_0\|_F^2\right)\\
+&amp;=(X^{\mathsf T}X+\lambda_{\rm abs}I)^{-1}(X^{\mathsf T}Y+\lambda_{\rm abs}W_0),\\
+\Delta W&amp;=W_{\rm fit}-W_0,\qquad
+\lambda_{\rm abs}=\lambda_{\rm grid}\frac{\operatorname{tr}(X^{\mathsf T}X)}{1024}.
+\end{aligned}
+
+\]</span><a aria-label="Equation 16" class="equation-number" href="#eq:ridge">(16)</a></span> 第一项使新投影接近目标，第二项限制偏离原权重；<span class="math inline">\(\|\cdot\|_F^2\)</span> 是元素平方和，<span class="math inline">\(I\)</span> 是单位矩阵， <span class="math inline">\(N\)</span> 为采集的特征行数，<span class="math inline">\(\lambda_{\rm grid}\)</span> 为待选正则系数，按特征能量缩放。实现求解线性方程而非显式求逆，不使用反向传播；每轮重新采集候选的特征，V 投影保持不变。共享权重不直接接收动作序号，因此它依赖特征中已有的位置信息来近似额外旋转。</p>
+<p><strong>第三步：检查生成动作并调整拟合。</strong>初版在全部 18 层拟合 Q/K，两轮后拟合观测上与 teacher 的归一化动作 RMS 从 0.03694 降至约 0.00298。它检验的是最终动作，而非 Q/K 特征误差。改进版保留第 0 层，仅拟合第 1–17 层，相应 teacher 也仅在这些层修改 RoPE。它的考虑是：第 0 层输入尚未经过动作注意力混合，可能缺少让共享投影区分动作序号的信息。</p>
+<p><strong>第四步：在留出的观测上验证改进。</strong>Opus 5.5 从 12 条 demonstration 和 12 条历史执行轨迹中取 48 个观测拟合，另留 36 个时刻测试；时刻不重复，但来自同一批轨迹。三轮拟合后，共同测试上的进度比由初版约 1.17 增至 1.20，偏差由 1.26 降至 1.08 mm，jerk 比由 1.47 降至 1.37。Opus 5.5 因而保留 节奏加速编辑，接着检验修改强度及其与前缀修复的组合。</p>
+<h3 id="s2-6"><span class="section-number">2.6 </span>进一步施加参数约束，并与前缀修复合并验证<a aria-label="本节链接" class="heading-anchor" href="#s2-6">#</a></h3>
+<p>Opus 5.5 用编辑强度 <span class="math inline">\(\alpha\)</span> 控制拟合改变量： <span class="equation" id="eq:alpha"><span class="math display">\[
+W(\alpha)=W_0+\alpha\Delta W,\qquad\Delta W=W_{\rm fit}(s=1.25)-W_0.
+
+\]</span><a aria-label="Equation 17" class="equation-number" href="#eq:alpha">(17)</a></span> <span class="math inline">\(\alpha=0\)</span> 为原版 Q/K，<span class="math inline">\(\alpha=1\)</span> 为完整 节奏加速编辑；它与拟合时的位置尺度 <span class="math inline">\(s=1.25\)</span> 是不同参数。测试 <span class="math inline">\(\alpha=0.25\)</span> 至 <span class="math inline">\(1.5\)</span> 时，进度先增加，随后饱和且偏差增大。将修改限制为秩 16、64、256 时，进度约为 1.06、1.10、1.16，低于完整 节奏加速编辑的约 1.20。</p>
+<p>随后，它在 36 个相同测试观测上比较前缀修复、节奏加速编辑 与组合，并加入时间缩放和动作幅度缩放基线（系数均为 1.21445）。表 <a data-reference="tab:offline" data-reference-type="ref" href="#tab:offline">2</a> 中路径与 jerk 指标纳入 35 个有效观测。Chunk 跳变取旧计划前 4 步与新计划第 5–13 步拼接邻域内的最大相邻 TCP 步长，再取两臂较大值；它包含正常相邻动作位移。</p>
+<div id="tab:offline">
+<p class="table-caption" id="table-caption-2"><strong>表 2. </strong>相同测试输入上的离线比较。各指标为中位数；进度、偏差和 jerk 有效输入数为 35，chunk 跳变为 36。进度 1.214 倍表示相同时间内沿原路线推进更多，不代表成功任务时间缩短 21.4%。</p><div aria-labelledby="table-caption-2" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">方法</th>
+<th scope="col" style="text-align: right;">路径进度比</th>
+<th scope="col" style="text-align: right;">路径偏差 (mm)</th>
+<th scope="col" style="text-align: right;">jerk 比</th>
+<th scope="col" style="text-align: right;">chunk 跳变 (mm)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">原版</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">44.223</td>
+</tr>
+<tr>
+<td style="text-align: left;">仅前缀修复</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">0.178</td>
+<td style="text-align: right;">1.004</td>
+<td style="text-align: right;">5.822</td>
+</tr>
+<tr>
+<td style="text-align: left;">仅 节奏加速编辑（<span class="math inline">\(\alpha=1\)</span>）</td>
+<td style="text-align: right;">1.199</td>
+<td style="text-align: right;">1.076</td>
+<td style="text-align: right;">1.367</td>
+<td style="text-align: right;">41.453</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>联合编辑</strong></td>
+<td style="text-align: right;"><strong>1.214</strong></td>
+<td style="text-align: right;"><strong>1.071</strong></td>
+<td style="text-align: right;"><strong>1.363</strong></td>
+<td style="text-align: right;"><strong>5.442</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">轨迹时间缩放</td>
+<td style="text-align: right;">1.257</td>
+<td style="text-align: right;">0.038</td>
+<td style="text-align: right;">0.827</td>
+<td style="text-align: right;">44.223</td>
+</tr>
+<tr>
+<td style="text-align: left;">动作幅度缩放</td>
+<td style="text-align: right;">1.054</td>
+<td style="text-align: right;">4.870</td>
+<td style="text-align: right;">1.217</td>
+<td style="text-align: right;">53.529</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p>组合候选同时增加了路径进度并减小 chunk 跳变，但 chunk 内 jerk 比升至 1.363。时间缩放的偏差与 jerk 更低，却保留了原版跳变；随机权重方向的路径偏差达到 24.05 mm、jerk 比为 31.07，未能保留原行为。Opus 5.5 最终选择联合编辑、<span class="math inline">\(\alpha=1\)</span>；由于未比较前缀修复+时间缩放，这不证明编辑优于所有后处理方案。</p>
+<h3 id="s2-7"><span class="section-number">2.7 </span>交付与研究开销<a aria-label="本节链接" class="heading-anchor" href="#s2-7">#</a></h3>
+<p>Opus 5.5 检查保存、回滚与原生重载后，交付独立 checkpoint，共修改全模型 <strong>1.16%</strong> 的参数，8 个测试输入均得到有效输出。首轮研究用时 <strong>1 小时 50 分 42 秒</strong>，调用工具 <strong>193 次</strong>（Bash 163、Write 18、Read 8、其他 4），发起 187 次 API 请求。181 次有用量记录，合计输出 <strong>184,614 token</strong>，另有缓存写入 433,426、读取 36,783,281 token；缺失的 6 次请求不按零计入，缓存读取包含重复上下文。以上均不包含后续真机分析和本文编写。</p>
+<h2 id="s3"><span class="section-number">3 </span>我们后续的实验与分析<a aria-label="本节链接" class="heading-anchor" href="#s3">#</a></h2>
+<p>我们随后检验实际任务用时与 chunk 跳变，并通过注意力区域干预和前缀处理对照分析内部作用。以下为我们补充的实验，不计入 Opus 5.5 首轮研究开销。</p>
+<h3 id="s3-1"><span class="section-number">3.1 </span>真机实验：任务用时与动作质量<a aria-label="本节链接" class="heading-anchor" href="#s3-1">#</a></h3>
+<p>我们在放瓶子、投硬币和叠方块三个任务上比较原版 Training-Time RTC 与联合编辑版（<span class="math inline">\(\alpha=1\)</span>）。每个任务的两组测试均使用相同的物体布局，原版与编辑版各执行 3 次。 <strong>（1）放瓶子。</strong>六次均完成四瓶放置。两组采用相同的 32 步执行长度、6 步 RTC 前缀及动作时间设置。表 <a data-reference="tab:completion" data-reference-type="ref" href="#tab:completion">3</a> 的用时从正式执行开始，到视频确认第四瓶在桶内放手为止，以真实采集时间戳计时。</p>
+<div id="tab:completion">
+<p class="table-caption" id="table-caption-3"><strong>表 3. </strong>相同布局下放瓶子任务的成功执行时间。每组 3 次，均值后为样本标准差；编号仅表示组内重复，不表示随机配对。</p><div aria-labelledby="table-caption-3" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">重复</th>
+<th scope="col" style="text-align: right;">原版 RTC (s)</th>
+<th scope="col" style="text-align: right;">联合编辑，<span class="math inline">\(\alpha=1\)</span> (s)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">22.69</td>
+<td style="text-align: right;">20.45</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: right;">22.17</td>
+<td style="text-align: right;">21.87</td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: right;">22.41</td>
+<td style="text-align: right;">22.05</td>
+</tr>
+<tr>
+<td style="text-align: left;">均值 <span class="math inline">\(\pm\)</span> 标准差</td>
+<td style="text-align: right;"><span class="math inline">\(22.42\pm0.26\)</span></td>
+<td style="text-align: right;"><span class="math inline">\(21.46\pm0.88\)</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p><strong>编辑版平均提前 0.96 s 完成，时间缩短 4.3%。</strong>这是相同布局下各三次成功执行的比较，不能据此估计成功率变化。</p>
+<p>同一完成区间内，我们在每次计划切换处计算相邻命令的 TCP 距离，取两臂较大值，再按每条轨迹统计并对组内三条轨迹取平均（表 <a data-reference="tab:real" data-reference-type="ref" href="#tab:real">4</a>）。原版与编辑版分别包含 60、58 次切换，首次进入计划不计入。</p>
+<div id="tab:real">
+<p class="table-caption" id="table-caption-4"><strong>表 4. </strong>同六条成功记录、同完成区间内的动作质量。各行先按轨迹计算，再对每组 3 条轨迹等权平均；“最大值”是每条轨迹最大值的组均值。</p><div aria-labelledby="table-caption-4" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">指标</th>
+<th scope="col" style="text-align: right;">原版 RTC</th>
+<th scope="col" style="text-align: right;">联合编辑</th>
+<th scope="col" style="text-align: right;">降低比例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">平均 chunk 跳变 (mm)</td>
+<td style="text-align: right;">26.23</td>
+<td style="text-align: right;">1.43</td>
+<td style="text-align: right;"><strong>94.5%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">试验内跳变 P95 的均值 (mm)</td>
+<td style="text-align: right;">43.57</td>
+<td style="text-align: right;">4.53</td>
+<td style="text-align: right;">89.6%</td>
+</tr>
+<tr>
+<td style="text-align: left;">试验内最大跳变的均值 (mm)</td>
+<td style="text-align: right;">51.49</td>
+<td style="text-align: right;">5.87</td>
+<td style="text-align: right;">88.6%</td>
+</tr>
+<tr>
+<td style="text-align: left;">命令 jerk P95 (m/s<span class="math inline">\(^3\)</span>)</td>
+<td style="text-align: right;">1040.40</td>
+<td style="text-align: right;">234.78</td>
+<td style="text-align: right;">77.4%</td>
+</tr>
+<tr>
+<td style="text-align: left;">平均末端跟踪误差 (mm)</td>
+<td style="text-align: right;">19.59</td>
+<td style="text-align: right;">19.17</td>
+<td style="text-align: right;">2.1%</td>
+</tr>
+</tbody>
+</table></div>
+</div><p class="execution-backlink"><a href="#bottle-video">↑ 查看六路原速执行对比</a></p>
+<p><strong>平均 chunk 跳变降低 94.5%，末端跟踪误差基本保持。</strong>完整命令轨迹按 30 Hz 三阶差分计算的 jerk P95 也下降 77.4%；它包含切换处的改善，与仅统计 chunk 内部的离线 jerk 不同。</p>
+<p><strong>（2）投硬币：提速主要发生在夹取后的搬运阶段。</strong>我们以实测夹爪的持续闭合、张开划分动作阶段。表 <a data-reference="tab:coin-stages" data-reference-type="ref" href="#tab:coin-stages">5</a> 显示，从左手闭合到交接放开的总用时由 <strong>5.85 s 降至 4.64 s，缩短 20.7%</strong>；其中，左手闭合至右手闭合的搬运阶段缩短 <strong>22.1%</strong>，开始到夹取及交接放手的用时基本不变。</p>
+<div id="tab:coin-stages">
+<p class="table-caption" id="table-caption-5"><strong>表 5. </strong>相同布局下投硬币任务的分阶段用时：原版与编辑版各 3 次，表中为各组均值。阶段边界来自实测夹爪状态；开始时刻为正式执行的首个有效计划 tick。最后一行是中间两阶段的合计。</p><div aria-labelledby="table-caption-5" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">阶段</th>
+<th scope="col" style="text-align: right;">原版 (s)</th>
+<th scope="col" style="text-align: right;">编辑版 (s)</th>
+<th scope="col" style="text-align: right;">用时缩短</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">接近与夹取：开始至左手闭合</td>
+<td style="text-align: right;">8.034</td>
+<td style="text-align: right;">8.039</td>
+<td style="text-align: right;"><span class="math inline">\(-0.1\%\)</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">搬运至交接：左手闭合至右手闭合</td>
+<td style="text-align: right;">5.451</td>
+<td style="text-align: right;">4.245</td>
+<td style="text-align: right;"><strong>22.1%</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">交接放手：右手闭合至左手张开</td>
+<td style="text-align: right;">0.399</td>
+<td style="text-align: right;">0.396</td>
+<td style="text-align: right;">0.7%</td>
+</tr>
+<tr>
+<td style="text-align: left;">夹取后至交接放开（合计）</td>
+<td style="text-align: right;"><strong>5.849</strong></td>
+<td style="text-align: right;"><strong>4.641</strong></td>
+<td style="text-align: right;"><strong>20.7%</strong></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p>这六条记录的完整任务成功数为原版 <strong>0/3</strong>、编辑版 <strong>1/3</strong>。因此，这里的 20.7% 表示夹取后至交接放开的阶段用时缩短，与瓶子实验的整项任务完成时间分开报告。</p>
+<p><strong>（3）叠方块：没有观察到明显提速。</strong>两组各 3 次测试最终均成功，成功数同为 <strong>3/3</strong>。其中，原版第 2 次执行在堆叠失败后重新抓取并完成任务，因此总用时较长，为 <strong>28.27 s</strong>。表 <a data-reference="tab:stack-completion" data-reference-type="ref" href="#tab:stack-completion">6</a> 保留全部六次执行的完成时间；为比较无需重试时的执行速度，我们排除这次记录后计算均值。原版其余 2 次与编辑版 3 次的平均完成时间分别为 <strong>19.46、19.28 s</strong>，仅缩短 <strong>0.19 s（约 1.0%）</strong>，且单次用时相互重叠。</p>
+<div id="tab:stack-completion">
+<p class="table-caption" id="table-caption-6"><strong>表 6. </strong>相同布局下叠方块任务的完成时间。从正式执行开始计时，到视频确认最终方块放开且由下方堆叠支撑为止。<span class="math inline">\(\dagger\)</span> 表示堆叠失败后重试成功：保留该次结果，但不纳入下方的速度比较均值。编号仅表示组内重复。</p><div aria-labelledby="table-caption-6" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">重复</th>
+<th scope="col" style="text-align: right;">原版 RTC (s)</th>
+<th scope="col" style="text-align: right;">联合编辑(s)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">19.42</td>
+<td style="text-align: right;">19.56</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: right;"><span class="math inline">\(28.27^{\dagger}\)</span></td>
+<td style="text-align: right;">19.00</td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: right;">19.50</td>
+<td style="text-align: right;">19.26</td>
+</tr>
+<tr>
+<td style="text-align: left;">均值（排除重试）</td>
+<td style="text-align: right;"><strong>19.46</strong>（<span class="math inline">\(n=2\)</span>）</td>
+<td style="text-align: right;"><strong>19.28</strong>（<span class="math inline">\(n=3\)</span>）</td>
+</tr>
+<tr>
+<td style="text-align: left;">最终成功数（全部测试）</td>
+<td style="text-align: right;">3/3</td>
+<td style="text-align: right;">3/3</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p><strong>这些真机结果表明，权重编辑在我们的任务中确实取得了收益：放瓶子更快且 chunk 跳变更小，投硬币的搬运阶段也有所加快。但这仍是一次初步尝试，提速幅度有限。这与第 <a data-reference="sec:tempo-hypothesis" data-reference-type="ref" href="#s2-3">2.3</a> 节的假设及离线结果相呼应：模型学到的动作位置与位移关系可能提供调节动作节奏的入口。</strong></p>
+<h3 id="s3-2"><span class="section-number">3.2 </span>机制分析：哪些注意力变化保留了进度收益<a aria-label="本节链接" class="heading-anchor" href="#s3-2">#</a></h3>
+<p>我们在相同的 8 个瓶子任务观测上比较原版、直接 RoPE teacher 与 节奏加速编辑，固定初始噪声、RTC 条件和采样步数，不叠加前缀修复。首先，节奏加速编辑的上下文注意力与 teacher 更接近：分布距离 JSD 为 0.00173，低于其与原版的 0.00792（越低越接近）。这支持拟合保留了位置干预的部分内部效果。</p>
+<figure data-latex-placement="htbp" id="fig:attention-regions">
+<a class="figure-link" href="../assets/attention-regions.png" rel="noopener" target="_blank" title="查看原图"><img alt="统一带掩码 softmax 之前的注意力分数干预。行是 query，列是 key。蓝色：动作读取上下文；橙色：动作读取动作；灰色：原版分数。右上角被掩码屏蔽。颜色标记干预区域，不代表实测数值大小。" decoding="async" loading="lazy" src="../assets/attention-regions.png"/></a>
+<figcaption><strong>图 6. </strong>统一带掩码 softmax 之前的注意力分数干预。行是 query，列是 key。蓝色：动作读取上下文；橙色：动作读取动作；灰色：原版分数。右上角被掩码屏蔽。颜色标记干预区域，不代表实测数值大小。</figcaption>
+</figure>
+<p>图 <a data-reference="fig:attention-regions" data-reference-type="ref" href="#fig:attention-regions">6</a> 标出两个区域：右下角是动作读取动作，左下角是动作读取图像、文本和状态。在每层当前同一份隐藏特征 <span class="math inline">\(X\)</span> 上，分别用原版（<span class="math inline">\(r=0\)</span>）和 节奏加速编辑（<span class="math inline">\(r=E\)</span>）的 Q/K 权重，按式 <a data-reference="eq:qk" data-reference-type="eqref" href="#eq:qk">(7)</a> 计算投影并施加原始 RoPE，得到 softmax 前的分数： <span class="equation" id="eq:route-scores"><span class="math display">\[
+L^r_{ij}=\frac{(Q_i^r)^{\mathsf T}K_j^r}{\sqrt d},
+\qquad L^r=[\,L^r_{\rm ctx}\mid L^r_{\rm act}\,],\quad r\in\{0,E\}.
+
+\]</span><a aria-label="Equation 18" class="equation-number" href="#eq:route-scores">(18)</a></span> 其中 <span class="math inline">\(i\)</span> 为动作 query，<span class="math inline">\(j\)</span> 为 key，<span class="math inline">\(d=256\)</span>；ctx 表示图像、文本和状态，act 表示动作。上下文缓存 K 保持不变。两种区域干预分别为： <span class="equation" id="eq:route-interventions"><span class="math display">\[
+\begin{aligned}
+A_{\rm act\text{-}only}&amp;=\operatorname{softmax}\!\left([\,L^0_{\rm ctx}\mid L^E_{\rm act}\,]+M\right),\\
+A_{\rm ctx\text{-}only}&amp;=\operatorname{softmax}\!\left([\,L^E_{\rm ctx}\mid L^0_{\rm act}\,]+M\right).
+\end{aligned}
+
+\]</span><a aria-label="Equation 19" class="equation-number" href="#eq:route-interventions">(19)</a></span> <span class="math inline">\(M\)</span> 为原始注意力掩码（可读取位置为 <span class="math inline">\(0\)</span>，屏蔽位置为 <span class="math inline">\(-\infty\)</span>）。组合分数后统一归一化，再计算 <span class="math inline">\(AV\)</span> 并继续前向传播；V 投影权重保持不变。由于 softmax 分母共享，改变一块分数也可能改变另一块的概率。</p>
+<div id="tab:attention-routes">
+<p class="table-caption" id="table-caption-7"><strong>表 7. </strong>注意力路径干预对预测动作的影响，8 个输入的中位数。进度沿原路径计算，分别取第 21、37 步；所有变体均使用同一批手臂，按原版预测累计移动至少 15 mm 的条件选择。前缀修复均关闭，jerk 为 chunk 内指标。这些是离线计划的几何量，不是实测完成时间。</p><div aria-labelledby="table-caption-7" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">干预</th>
+<th scope="col" style="text-align: right;">第 21 步进度比</th>
+<th scope="col" style="text-align: right;">第 37 步进度比</th>
+<th scope="col" style="text-align: right;">偏差 (mm)</th>
+<th scope="col" style="text-align: right;">jerk 比</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">原版</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">1.000</td>
+</tr>
+<tr>
+<td style="text-align: left;">直接 RoPE teacher</td>
+<td style="text-align: right;">1.203</td>
+<td style="text-align: right;">1.101</td>
+<td style="text-align: right;">1.012</td>
+<td style="text-align: right;">1.105</td>
+</tr>
+<tr>
+<td style="text-align: left;">完整 节奏加速编辑</td>
+<td style="text-align: right;"><strong>1.227</strong></td>
+<td style="text-align: right;"><strong>1.140</strong></td>
+<td style="text-align: right;">1.028</td>
+<td style="text-align: right;">1.289</td>
+</tr>
+<tr>
+<td style="text-align: left;">仅动作 key 分数</td>
+<td style="text-align: right;"><strong>1.178</strong></td>
+<td style="text-align: right;"><strong>1.087</strong></td>
+<td style="text-align: right;">1.100</td>
+<td style="text-align: right;">1.249</td>
+</tr>
+<tr>
+<td style="text-align: left;">仅图像与 prompt/state 分数</td>
+<td style="text-align: right;"><strong>1.057</strong></td>
+<td style="text-align: right;"><strong>1.039</strong></td>
+<td style="text-align: right;">0.484</td>
+<td style="text-align: right;">0.981</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p>表 <a data-reference="tab:attention-routes" data-reference-type="ref" href="#tab:attention-routes">7</a> 显示，第 37 步的进度比由完整 节奏加速编辑的 1.140 变为仅动作间干预的 1.087、仅上下文干预的 1.039。<strong>动作之间的分数干预保留了较多离线进度收益。</strong></p>
+<h3 id="s3-3"><span class="section-number">3.3 </span>在参数空间修复前缀一致性问题<a aria-label="本节链接" class="heading-anchor" href="#s3-3">#</a></h3>
+<p>出人意料的是，前缀修复让我们注意到了一个在 Training-Time RTC（TT-RTC）官方公开代码中未处理的 bug：实际延迟短于预设前缀时，被最后一次积分改写的条件动作仍可能进入执行。我们首先简单介绍什么是 TT-RTC。</p>
+<p><strong>TT-RTC 要解决的是：机器人在等待下一段chunk推理完时，如何继续运动，并顺畅切换到新 chunk。</strong>图 <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a> 顶行是上一个 chunk 剩余的动作 <span class="math inline">\(A_1,A_2,\ldots\)</span>。模型从A1开始进行下一段动作的推理时，机器人继续执行当前chunk；我们把预计在等待期间执行的前 6 步 <span class="math inline">\(A_1\)</span>–<span class="math inline">\(A_6\)</span> 作为条件（prefix），让模型生成接在后面的新动作 <span class="math inline">\(B_7,B_8,\ldots\)</span>。TT-RTC 官方代码的固定延迟仿真使用相同的条件长度与延迟。以图 <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a>(a) 的 6 步为例，旧 chunk 执行到 <span class="math inline">\(A_6\)</span> 后，新结果恰好返回。程序丢弃新输出的前 6 步，从 <span class="math inline">\(B_7\)</span> 开始执行，完成 chunk 切换 <span class="citation" data-cites="trainingrtc trainingrtccode"><a href="#ref-trainingrtc" role="doc-biblioref">[4]</a>, <a href="#ref-trainingrtccode" role="doc-biblioref">[5]</a></span>。</p>
+<figure data-latex-placement="!htbp" id="fig:prefix-return">
+<a class="figure-link" href="../assets/prefix-return.png" rel="noopener" target="_blank" title="查看原图"><img alt="从旧 chunk 切换到新 chunk。顶行是计算开始时旧计划剩余的动作，前 6 步被用作条件。下方三行是新返回的动作序列，箭头标出切换后从哪里开始执行；灰色位置会被丢弃，星号表示最后一次采样积分留下的改动。(a) 等待 6 步：旧计划执行到 \(A_6\) ，切换到 \(B_7\) 。(b) 只等待 4 步：旧计划执行到 \(A_4\) ，却切换到被改写的 \(A_5^*,A_6^*\) （红色）。(c) 修复后，同样在 \(A_4\) 后切换，但接上的是保持原样的 \(A_5,A_6\) （绿色），再执行新动作 \(B_7,B_8\) 。" decoding="async" loading="lazy" src="../assets/prefix-return.png"/></a>
+<figcaption><strong>图 7. </strong>从旧 chunk 切换到新 chunk。顶行是计算开始时旧计划剩余的动作，前 6 步被用作条件。下方三行是新返回的动作序列，箭头标出切换后从哪里开始执行；灰色位置会被丢弃，星号表示最后一次采样积分留下的改动。(a) 等待 6 步：旧计划执行到 <span class="math inline">\(A_6\)</span>，切换到 <span class="math inline">\(B_7\)</span>。(b) 只等待 4 步：旧计划执行到 <span class="math inline">\(A_4\)</span>，却切换到被改写的 <span class="math inline">\(A_5^*,A_6^*\)</span>（红色）。(c) 修复后，同样在 <span class="math inline">\(A_4\)</span> 后切换，但接上的是保持原样的 <span class="math inline">\(A_5,A_6\)</span>（绿色），再执行新动作 <span class="math inline">\(B_7,B_8\)</span>。</figcaption>
+</figure>
+<p><strong>图 <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a>(b) 展示了结果提前返回时的问题。</strong>模型只计算了 4 个动作步的时间，机器人也只执行到旧 chunk 的 <span class="math inline">\(A_4\)</span>，接下来仍需要 <span class="math inline">\(A_5,A_6\)</span>。然而，条件前缀在 flow matching 采样中仍参与积分更新。以我们使用的 10 次采样迭代为例，第 1–9 次积分对前缀的改动，都会在下一轮计算前被给定的旧动作替换；<strong>第 10 次积分后却直接返回，没有再替换一次。</strong>因此，新结果中留下的可能是 <span class="math inline">\(A_5^*,A_6^*\)</span>，而不是原计划的 <span class="math inline">\(A_5,A_6\)</span>。此时切换 chunk，机器人就会接到两个被改写的动作，产生跳变。TT-RTC 官方代码在图 <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a>(a) 的设定下会丢弃全部前缀，因此没有暴露这一问题。</p>
+<p>对于需要 IK 的部署，为覆盖求解时延波动，我们通常会保守地预留更长的 prefix。延迟波动越大，这个预留长度与某次实际延迟的差距也可能越大；一旦结果提前返回，就会留下更多仍需执行的条件动作。OpenWAM <span class="citation" data-cites="openwam"><a href="#ref-openwam" role="doc-biblioref">[6]</a></span> 原版使用 i2rt 封装的 <strong>Mink 微分 IK，迭代求解二次规划（QP）</strong>；包含 IK 的动作解码耗时中位数为 <strong>22.9 ms</strong>，最高 <strong>921.2 ms</strong>。随后采用的 DLS gate 根据雅可比矩阵最小奇异值调节运动正则、限制关节变化，耗时仍从中位数 <strong>49.3 ms</strong> 到最高 <strong>177.7 ms</strong>。</p>
+<p>图 <a data-reference="fig:prefix-return" data-reference-type="ref" href="#fig:prefix-return">7</a>(c) 展示了修复后的切换：即使在 <span class="math inline">\(A_4\)</span> 后拿到新结果，接下来执行的仍是原计划的 <span class="math inline">\(A_5,A_6\)</span>。Opus 5.5 的前缀修复让这些条件动作对应的采样更新量接近零，避免最后一次积分改写它们。它修改的是动作专家最后一个归一化层的时间调制权重 <code>final_norm_1.Dense_0.kernel</code>。在当前设置下，其效果几乎等价于返回前执行 <code>actions[:6] = condition[:6]</code>，即把前 6 步重新替换为给定的旧动作；Opus 通过修改参数近似实现了这一步。</p>
+<p>我们随后用相同的 36 个观测（12 个本地 demonstration、24 个历史 rollout 观测）补充对照，固定随机种子和采样步数，比较缩短条件、仅使用前缀修复、直接恢复前缀三种处理，均不包含 节奏加速编辑。</p>
+<div id="tab:prefix-e0">
+<p class="table-caption" id="table-caption-8"><strong>表 8. </strong>前缀处理对照：36 个相同观测，假设实际裁剪 4 步。切换点步长为旧计划第 4 步至新计划第 5 步的 TCP 距离，取双臂较大值，再取样本中位数。后续动作差异为第 7–38 步、12 个关节相对原版的 RMS，取样本均值。</p><div aria-labelledby="table-caption-8" class="table-scroll" role="region" tabindex="0"><table>
+
+<thead>
+<tr>
+<th scope="col" style="text-align: left;">方法</th>
+<th scope="col" style="text-align: right;">切换点步长 (mm)</th>
+<th scope="col" style="text-align: right;">后续动作差异 (rad)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">原版，6 步条件</td>
+<td style="text-align: right;">19.158</td>
+<td style="text-align: right;">0.000000</td>
+</tr>
+<tr>
+<td style="text-align: left;">原版，4 步条件</td>
+<td style="text-align: right;">4.930</td>
+<td style="text-align: right;">0.002228</td>
+</tr>
+<tr>
+<td style="text-align: left;">仅前缀修复，6 步条件</td>
+<td style="text-align: right;"><strong>1.798</strong></td>
+<td style="text-align: right;">0.000375</td>
+</tr>
+<tr>
+<td style="text-align: left;">代码修复，返回前恢复 6 步</td>
+<td style="text-align: right;"><strong>1.885</strong></td>
+<td style="text-align: right;">0.000000</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p>表 <a data-reference="tab:prefix-e0" data-reference-type="ref" href="#tab:prefix-e0">8</a> 显示，相对原版的 <strong>19.16 mm</strong>，前缀权重修复与直接恢复前缀的代码修复，分别将切换点步长中位数降至 <strong>1.80、1.88 mm</strong>，后续动作变化也很小。这支持两者在前缀修复上的近似等效。缩短为 4 步条件也能改善当前对照，但不能消除实际延迟短于条件长度时的同类问题。</p>
+<p><strong>Opus 通过修改时间调制权重，使条件前缀的更新量接近零，在参数空间修复了官方公开代码未处理的这一 bug：实际延迟短于预设 prefix 时，被采样更新改写的条件动作仍可能进入执行序列。</strong>对于需要 IK、必须为延迟波动预留余量的部署，这项前缀保护尤其重要。我们没有指定这一缺陷；Opus 在研究中主动发现它，并在不改推理代码的约束下给出了参数层面的修复。</p>
+<h2 class="unnumbered" id="closing-thoughts">结语<a aria-label="本节链接" class="heading-anchor" href="#closing-thoughts">#</a></h2>
+<p>我们本以为，这会是一次 Claude 直接修改权重的 Magic：模型理解了参数，凭直觉做出几处修改，机器人便能更快地完成任务。</p>
+<p>然而事实并非如此。Opus 5.5 从对 RoPE 的理解出发，提出位置编码可能影响动作节奏的假设，设计对照实验加以检验，再通过常见的拟合方法将干预效果写入权重。输出层拟合的测试效果不佳，它便转向注意力内部的 Q/K 投影。整套 Weight-Space Editing，就这样由机制理解、数学推导和实验反馈逐步构成。我们认为，这套方法能够 work，不仅来自 Opus 对模型参数的理解，更来自它对研究知识的归纳、对不同机制的理解，以及将这些理解转化为假设和实验的能力。</p>
+<p>这也引出了一个更重要的问题：当 Frontier Model 能够跨越多个 Domain 提出假设、设计实验、修正方法，这种 AutoResearch 能力，将为具身领域科学问题的发现与解决带来什么改变？</p>
+<p>在 Robotics 知识逐渐被 Frontier Model 内化的时代，下一代、甚至未来几代模型，会如何改变我们提出问题、验证想法和推进研究的方式？这个案例还无法回答，但它让这些问题变得具体，也让我们对接下来会发生什么充满期待。</p>
+<p>希望本文能揭开这个方向的一角。我们更想知道，下一次由它提出、并被实验验证的想法，会不会也改变我们对机器人的理解。</p>
+<h2 id="references">参考文献</h2><ol class="references" role="doc-bibliography"><li id="ref-wsp"><p>Rikiya Takehi, Jayden Teoh, Alex Zhang, Omar Khattab. <em>Sparks of Weight-Space Programming: LLMs can natively read &amp; write neural network weights</em>. MIT CSAIL, 2026. <a href="https://rikiyat.github.io/blog/weight-space-programming/" class="uri">https://rikiyat.github.io/blog/weight-space-programming/</a>.</p>
+</li><li id="ref-pi05"><p>Physical Intelligence et al. <em><span class="math inline">\(\pi_{0.5}\)</span>: a Vision-Language-Action Model with Open-World Generalization</em>. arXiv:2504.16054, 2025. <a href="https://arxiv.org/abs/2504.16054" class="uri">https://arxiv.org/abs/2504.16054</a>.</p>
+</li><li id="ref-rope"><p>Jianlin Su et al. <em>RoFormer: Enhanced Transformer with Rotary Position Embedding</em>. arXiv:2104.09864. <a href="https://arxiv.org/abs/2104.09864" class="uri">https://arxiv.org/abs/2104.09864</a>.</p>
+</li><li id="ref-trainingrtc"><p>Kevin Black, Allen Z. Ren, Michael Equi, Sergey Levine. <em>Training-Time Action Conditioning for Efficient Real-Time Chunking</em>. arXiv:2512.05964v2. <a href="https://arxiv.org/html/2512.05964v2" class="uri">https://arxiv.org/html/2512.05964v2</a>.</p>
+</li><li id="ref-trainingrtccode"><p>Physical Intelligence. <em>real-time-chunking-kinetix</em>, commit <code>9296f31d62d5</code>. <a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix" class="uri">https://github.com/Physical-Intelligence/real-time-chunking-kinetix</a>. 本文核对 <code>src/model.py</code> 与 <code>src/eval_flow.py</code>。</p>
+</li><li id="ref-openwam"><p>Yuran Wang et al. <em>OpenWAM: An Open, Modular Exploration Towards Systematic World-Action Model Pretraining</em>. arXiv:2609.07398, 2026. <a href="https://arxiv.org/abs/2609.07398" class="uri">https://arxiv.org/abs/2609.07398</a>.</p>
+</li></ol></div>
+<footer class="article-footer"><p>切换语言 <a class="language-link" href="../en/">English →</a></p><p><a href="https://github.com/Cuzyoung/robotics-weight-editing">GitHub</a></p></footer>
+</article></main></div><footer class="site-footer">Robotics Weight Editing <span>·</span> Ziyang Gong et al.</footer>
+</body></html>
