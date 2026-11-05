@@ -46,3 +46,6 @@ html[lang=zh-CN] .research-opener h2{font-family:var(--sans);font-size:30px;font
 .research-opener .opener-note{font-size:11px;line-height:1.7;color:var(--muted);margin:22px 0 0}
 .finding-conclusion{font-size:14px;line-height:1.85;margin:18px 0 0;padding:14px 0 0;border-top:1px solid var(--rule);color:var(--ink)}
 @media(max-width:600px){.research-opener{padding-top:20px}.research-opener h2{font-size:31px}html[lang=zh-CN] .research-opener h2{font-size:25px}.research-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px}.research-facts b{font-size:15px}.research-facts span{font-size:11px}.finding-conclusion{font-size:13px}}
+
+/* Metric headings remain readable after removing auxiliary source notes. */
+.evidence-strip>h4{font-size:14px;line-height:1.6;margin:0;color:var(--ink);font-weight:600}.evidence-strip>div{grid-row:1}
