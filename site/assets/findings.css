@@ -49,3 +49,13 @@ html[lang=zh-CN] .research-opener h2{font-family:var(--sans);font-size:30px;font
 
 /* Metric headings remain readable after removing auxiliary source notes. */
 .evidence-strip>h4{font-size:14px;line-height:1.6;margin:0;color:var(--ink);font-weight:600}.evidence-strip>div{grid-row:1}
+
+/* Matched-rate completion results, alongside the 40 Hz real-time demo. */
+.frequency-results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin:28px 0 22px}
+.frequency-results>div{border-left:2px solid var(--rule);padding:0 0 0 18px;min-width:0}
+.frequency-results b{display:block;font-size:16px;color:var(--ink);font-weight:600}
+.frequency-results strong{display:block;font-size:38px;line-height:1.4;letter-spacing:-1px;color:var(--ink);font-weight:600}
+.frequency-results span{display:block;font-size:13px;color:var(--muted);margin-top:5px}
+.frequency-results p{font-size:17px;font-variant-numeric:tabular-nums;color:var(--ink);margin:4px 0 0}
+.frequency-explanation{font-size:15px;line-height:1.9;margin:0 0 24px;color:var(--ink)}
+@media(max-width:600px){.frequency-results{gap:10px}.frequency-results>div{padding-left:9px}.frequency-results strong{font-size:27px}.frequency-results b{font-size:14px}.frequency-results span{font-size:12px}.frequency-results p{font-size:13px}.frequency-explanation{font-size:14px}}
