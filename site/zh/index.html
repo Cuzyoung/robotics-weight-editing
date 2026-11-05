@@ -939,8 +939,8 @@ A_{\rm ctx\text{-}only}&amp;=\operatorname{softmax}\!\left([\,L^E_{\rm ctx}\mid 
 <p>表&nbsp;<a data-reference="tab:prefix-e0" data-reference-type="ref" href="#tab:prefix-e0">10</a> 显示，相对原版的 <strong>19.16 mm</strong>，前缀权重修复与直接恢复前缀的代码修复，分别将切换点步长中位数降至 <strong>1.80、1.88 mm</strong>，后续动作变化也很小。这支持两者在前缀修复上的近似等效。缩短为 4 步条件也能改善当前对照，但不能消除实际延迟短于条件长度时的同类问题。</p>
 <p><strong>Opus 通过修改时间调制权重，使条件前缀的更新量接近零，在参数空间修复了官方公开代码未处理的这一 bug：实际延迟短于预设 prefix 时，被采样更新改写的条件动作仍可能进入执行序列。</strong>对于需要 IK、必须为延迟波动预留余量的部署，这项前缀保护尤其重要。我们没有指定这一缺陷；Opus 在研究中主动发现它，并在不改推理代码的约束下给出了参数层面的修复。</p>
 <h2 class="unnumbered" id="closing-thoughts">结语<a aria-label="本节链接" class="heading-anchor" href="#closing-thoughts">#</a></h2>
-<p>我们本以为，这会是一次 Claude 直接修改权重的 Magic：模型理解了参数，凭直觉做出几处修改，机器人便能更快地完成任务。</p>
-<p>然而事实并非如此。Opus 5.5 从对 RoPE 的理解出发，提出位置编码可能影响动作节奏的假设，设计对照实验加以检验，再通过常见的拟合方法将干预效果写入权重。输出层拟合的测试效果不佳，它便转向注意力内部的 Q/K 投影。整套 Weight-Space Editing，就这样由机制理解、数学推导和实验反馈逐步构成。我们认为，这种“Weight Editing”能够 work，不仅来自 Opus 对模型参数的理解，更来自它对研究知识的归纳、对不同机制的理解，以及将这些理解转化为假设和实验的能力。</p>
+<p>我们本以为，这会是一次 Magic：Claude 凭直觉修改几处权重，机器人就能执行得更快。</p>
+<p>然而事实并非如此。我们认为，这次 Weight Editing 的成功，本质上来自 Frontier Model 的 AutoResearch 能力：理解机制、发现问题、检验假设，并根据失败调整方向。对参数空间的理解使修改成为可能，而研究过程让它找到了值得实现的修改。</p>
 <p>这也引出了一个更重要的问题：当 Frontier Model 能够跨越多个 Domain 提出假设、设计实验、修正方法，这种 AutoResearch 能力，将为具身领域科学问题的发现与解决带来什么改变？</p>
 <p>在 Robotics 知识逐渐被 Frontier Model 内化的时代，下一代、甚至未来几代模型，会如何改变我们提出问题、验证想法和推进研究的方式？这个案例还无法回答，但它让这些问题变得具体，也让我们对接下来会发生什么充满期待。</p>
 <p>希望本文能揭开 <strong>Frontier Model for Robotics</strong> 这一方向的一角。我们更想知道，下一次由 <strong>frontier models</strong> 提出、并被实验验证的想法，会不会也改变我们对 Robotics Research 的理解。</p>
