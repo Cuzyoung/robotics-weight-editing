@@ -1,19 +1,19 @@
-/* Neutral page surfaces; preserve the semantic colors in code and diagrams. */
-:root{--paper:#fff;--ink:#171717;--muted:#686868;--rule:#dedede;--soft:#f4f4f4;color-scheme:light}
+/* Monochrome page surfaces; code and diagrams retain their semantic colors. */
+:root{--paper:#ffffff;--ink:#171717;--muted:#686868;--rule:#dedede;--soft:#f4f4f4;color-scheme:light}
 html,body{background:var(--paper)}
 .finding-card,.rope-card,.rope-demo{background:var(--paper)}
 .code-panel,.code-after,.method-intro,.chunk-graphic,.rope-graphic,.execution-labels{background:var(--soft)}
 .theme-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;min-width:76px;padding:6px 12px;border:1px solid var(--rule);border-radius:999px;background:var(--paper);color:var(--ink);font:500 12px/1.5 var(--sans);white-space:nowrap;cursor:pointer}
 .theme-toggle[hidden]{display:none}.theme-toggle:hover{background:var(--soft)}.theme-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:4px}.theme-icon{font-size:17px;line-height:1}
-html[data-theme=dark]{--paper:#000;--ink:#f1f1f1;--muted:#a7a7a7;--rule:#353535;--accent:#8bd3b8;--soft:#141414;color-scheme:dark}
-html[data-theme=dark] .findings{--rust:#e7ad8f;--green:#8bd3b8}
+html[data-theme=dark]{--paper:#000000;--ink:#f1f1f1;--muted:#a7a7a7;--rule:#353535;--accent:#c2c2c2;--soft:#141414;color-scheme:dark}
+html[data-theme=dark] .findings{--rust:#b7b7b7;--green:#c2c2c2}
 html[data-theme=dark] :is(strong,.article-introduction strong,.other-tasks b,.weight-realization b,.weight-derivation h4){color:var(--ink)}
 html[data-theme=dark] :is(.subtitle,.authors,.toc-level-1 a,.article-introduction,.findings-section-summary,.finding-lede,.finding-summary,.research-takeaway p,.edit-story,.edit-math,.derivation-math,.mechanism-heading,.mobile-toc summary){color:#d3d3d3}
-html[data-theme=dark] :is(.research-context,.diagram-label,.chunk-name,.chunk-legend,.rope-graphic p,.code-equivalent>span,.weight-realization p,.evidence-strip>span,.evidence-strip>div>span,.evidence-strip p,.other-tasks,.weight-derivation li>p,.target-note,.source-links,.mechanism-heading span,.article-content .rope-demo-note,.rope-status,.section-number,.toc a>span){color:#aaa}
-html[data-theme=dark] :is(a:hover,.toc a:hover,.toc a.active){color:#b3f0d8}
+html[data-theme=dark] :is(.research-context,.diagram-label,.chunk-name,.chunk-legend,.rope-graphic p,.code-equivalent>span,.weight-realization p,.evidence-strip>span,.evidence-strip>div>span,.evidence-strip p,.other-tasks,.weight-derivation li>p,.target-note,.source-links,.mechanism-heading span,.article-content .rope-demo-note,.rope-status,.section-number,.toc a>span){color:#aaaaaa}
+html[data-theme=dark] :is(a:hover,.toc a:hover,.toc a.active){color:#e1e1e1}
 html[data-theme=dark] :is(.evidence-strip b,.evidence-strip>div>span:first-child b,td strong,.rope-status output,.code-equivalent code,.rope-card .code-equivalent code){color:var(--accent)}
 html[data-theme=dark] :is(code,th){background:#191919;color:#dfdfdf}
-html[data-theme=dark] :is(h2:target,h3:target,.references li:target){background:#17251e}
+html[data-theme=dark] :is(h2:target,h3:target,.references li:target){background:#222222}
 html[data-theme=dark] .findings :target{background:none}
 html[data-theme=dark] :is(.finding-card,.rope-demo,.rope-weight-story,.rope-status,.code-equivalent,.weight-derivation,.weight-derivation li,.derivation-result,.evidence-strip,.edit-story,.code-panel,.code-panel h5,.mobile-toc,.table-scroll,thead,tbody tr+tr,.article-actions a){border-color:var(--rule)}
 html[data-theme=dark] .finding-card{border-top-color:var(--rust)}
@@ -24,10 +24,10 @@ html[data-theme=dark] .step.expired{background:#222;color:#aaa}
 html[data-theme=dark] .step.drift{background:#442a1f;color:#ffd1af;box-shadow:inset 0 -2px #d89160}
 html[data-theme=dark] .step.new{background:#1d3042;color:#bed9f0}
 html[data-theme=dark] .legend-drift{color:#f5bd98}
-html[data-theme=dark] .weight-derivation li:before{background:#223329;color:#c0dfc7}
-html[data-theme=dark] .rtc-card .weight-derivation li:before{background:#382b23;color:#e7b89b}
+html[data-theme=dark] .weight-derivation li:before{background:#2f2f2f;color:#d7d7d7}
+html[data-theme=dark] .rtc-card .weight-derivation li:before{background:#2d2d2d;color:#c0c0c0}
 html[data-theme=dark] .code-panel h5{color:#c1c1c1}
-html[data-theme=dark] .code-after h5{color:#9fdcbf}
+html[data-theme=dark] .code-after h5{color:#cdcdcd}
 html[data-theme=dark] .code-panel pre{color:#dfdfdf;background:transparent}
 html[data-theme=dark] .code-panel pre code{color:inherit;background:transparent}
 html[data-theme=dark] .code-panel .syntax-keyword{color:#d9a8f4}
@@ -36,13 +36,13 @@ html[data-theme=dark] .code-panel .syntax-number{color:#efba84}
 html[data-theme=dark] .code-panel .syntax-comment{color:#a1b1a5}
 html[data-theme=dark] .code-panel .syntax-string{color:#9ed4a8}
 html[data-theme=dark] .code-panel .syntax-operator{color:#f2b29b}
-html[data-theme=dark] .code-panel .code-focus{background:#393321;box-shadow:3px 0 #393321,-3px 0 #393321;color:#f5f5f5}
-html[data-theme=dark] .code-after .code-focus{background:#203c2e;box-shadow:3px 0 #203c2e,-3px 0 #203c2e}
+html[data-theme=dark] .code-panel .code-focus{background:#333333;box-shadow:3px 0 #333333,-3px 0 #333333;color:#f5f5f5}
+html[data-theme=dark] .code-after .code-focus{background:#353535;box-shadow:3px 0 #353535,-3px 0 #353535}
 /* SVG text and strokes have presentation attributes in the generated article. */
-html[data-theme=dark] :is(.rope-graphic,.chart-pair,.rope-demo) svg text{fill:#c5cdc9}
+html[data-theme=dark] :is(.rope-graphic,.chart-pair,.rope-demo) svg text{fill:#cbcbcb}
 html[data-theme=dark] .rope-demo .context-zone{fill:#202020}
-html[data-theme=dark] .rope-demo .context-point{fill:#aaa}
-html[data-theme=dark] .rope-demo :is(.axis,.unit-circle,.context-boundary){stroke:#5b6260}
+html[data-theme=dark] .rope-demo .context-point{fill:#aaaaaa}
+html[data-theme=dark] .rope-demo :is(.axis,.unit-circle,.context-boundary){stroke:#606060}
 html[data-theme=dark] .base-points circle{fill:#8dcaf5}
 html[data-theme=dark] .base-ray{stroke:#8dcaf5}
 html[data-theme=dark] :is(.edited-points circle,.edit-tip){fill:#8bd3b8}
@@ -50,6 +50,18 @@ html[data-theme=dark] :is(.edit-ray,.angle-arc){stroke:#8bd3b8}
 html[data-theme=dark] .rope-demo :is(.rotation-value,.edited-points .coordinate){fill:#8bd3b8}
 html[data-theme=dark] .skip-link{background:#171717}
 @media(max-width:600px){.top-nav{gap:10px;flex-wrap:wrap;justify-content:flex-end}.site-header{gap:12px}.theme-toggle{min-width:70px;padding:5px 9px}.site-name{min-width:120px}}
-@media print{html[data-theme]{--paper:#fff;--ink:#000;--muted:#555;--rule:#ccc;--soft:#f4f4f4;--accent:#235d49;color-scheme:light}.theme-toggle{display:none}html[data-theme=dark] :is(p,strong,h1,h2,h3,h4,h5,li,td,th,.authors,.article-introduction,.finding-summary,.edit-story,.derivation-math,.finding-lede,.findings-section-summary,.weight-derivation li>p){color:#000}html[data-theme=dark] :is(.finding-card,.code-panel,.rope-card){background:#fff}}
+@media print{html[data-theme]{--paper:#ffffff;--ink:#000000;--muted:#555555;--rule:#cccccc;--soft:#f4f4f4;--accent:#4f4f4f;color-scheme:light}.theme-toggle{display:none}html[data-theme=dark] :is(p,strong,h1,h2,h3,h4,h5,li,td,th,.authors,.article-introduction,.finding-summary,.edit-story,.derivation-math,.finding-lede,.findings-section-summary,.weight-derivation li>p){color:#000000}html[data-theme=dark] :is(.finding-card,.code-panel,.rope-card){background:#ffffff}}
 
-@media print{html[data-theme=dark] .code-panel pre,html[data-theme=dark] .code-panel pre :is(code,strong,span){color:#111;background:transparent;box-shadow:none}html[data-theme=dark] :is(.rope-graphic,.chart-pair) svg text{fill:#333}html[data-theme=dark] .execution-labels{background:#eee;color:#111}}
+@media print{html[data-theme=dark] .code-panel pre,html[data-theme=dark] .code-panel pre :is(code,strong,span){color:#111111;background:transparent;box-shadow:none}html[data-theme=dark] :is(.rope-graphic,.chart-pair) svg text{fill:#333333}html[data-theme=dark] .execution-labels{background:#eeeeee;color:#111111}}
+
+/* Neutral page accents; diagram palettes are defined independently. */
+:root{--accent:#262626}
+html[data-theme=dark]{--accent:#e0e0e0}
+.findings{--rust:var(--ink);--green:var(--ink)}
+html[data-theme=dark] .findings{--rust:var(--ink);--green:var(--ink)}
+
+.site-name{display:inline-flex;align-items:center;gap:8px}
+.site-mark{display:block;width:27px;height:32px;flex:0 0 27px}
+@media(max-width:600px){.site-name{gap:6px}.site-mark{width:22px;height:27px;flex-basis:22px}}
+
+html[data-theme=dark] .rope-status output{color:#8bd3b8}
