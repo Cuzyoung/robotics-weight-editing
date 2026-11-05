@@ -24,7 +24,10 @@ main{max-width:none}.article-header,.article-content,.abstract-fold,.article-foo
 /* Lead with the research question, then physical executions and the three findings. */
 .article-introduction{max-width:800px;margin:0 auto 40px;font-size:17px;line-height:1.95;color:#4f4f4f}
 .article-introduction p{margin:0 0 18px}.article-introduction strong{font-weight:650;color:#373737}
-.video-intro{margin:0 0 50px}.video-intro .execution-showcase{margin-top:0}.qk-card>.finding-problem{max-width:850px}
+.video-intro{margin:0 0 50px}.video-intro .execution-showcase{margin-top:0}.qk-realization{margin-top:30px;padding-top:28px;border-top:1px solid var(--rule);min-width:0}
+.qk-realization>.finding-problem{max-width:850px}
+.qk-realization>.finding-problem>h4{margin:0 0 16px;font-size:24px;font-weight:650;line-height:1.4;color:var(--ink)}
+@media(max-width:600px){.qk-realization{margin-top:24px;padding-top:22px}.qk-realization>.finding-problem>h4{font-size:21px}}
 @media(max-width:600px){.article-introduction{font-size:15px;line-height:1.9;margin-bottom:30px}.video-intro{margin-bottom:35px}}
 
 /* Findings is a full section heading, not an eyebrow label. */
