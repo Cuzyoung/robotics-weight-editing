@@ -1,0 +1,16 @@
+.bibtex-section{margin-top:48px;padding-top:32px;border-top:1px solid var(--rule)}
+.bibtex-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+.article-content .bibtex-heading h2{margin:0;padding:0;border:0}
+.bibtex-copy{flex-shrink:0;min-height:40px;padding:8px 14px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink);font:500 13px/1.4 var(--sans);cursor:pointer}
+.bibtex-copy:hover{background:var(--soft)}
+.bibtex-copy:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.bibtex-copy[hidden]{display:none}
+.bibtex-section pre{margin:0;padding:24px;border:1px solid var(--rule);border-radius:8px;background:var(--soft);overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:2}
+.bibtex-section pre code{display:block;padding:0;background:transparent;color:var(--ink);font:13px/1.8 ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;white-space:inherit}
+.bibtex-section .bibtex-entry{color:#8b3db0}
+.bibtex-section .bibtex-field{color:#1269a7}
+.bibtex-status{min-height:1.5em;margin:8px 0 0;color:var(--muted);font:13px/1.5 var(--sans)}
+html[data-theme=dark] .bibtex-section .bibtex-entry{color:#d9a8f4}
+html[data-theme=dark] .bibtex-section .bibtex-field{color:#8dcaf5}
+@media(max-width:600px){.bibtex-section{margin-top:32px;padding-top:24px}.bibtex-section pre{padding:16px}.bibtex-section pre code{font-size:12px}}
+@media print{.bibtex-copy,.bibtex-status{display:none}.bibtex-section pre{overflow:visible}.bibtex-section pre code,.bibtex-section .bibtex-entry,.bibtex-section .bibtex-field{color:#111}}
