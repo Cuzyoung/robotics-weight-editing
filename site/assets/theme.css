@@ -66,3 +66,12 @@ html[data-theme=dark] .findings{--rust:var(--ink);--green:var(--ink)}
 @media(max-width:600px){.site-name{gap:6px}.site-mark{width:22px;height:27px;flex-basis:22px}}
 
 html[data-theme=dark] .rope-status output{color:#8bd3b8}
+
+/* Keep reading times intact; publication information may wrap as a unit. */
+.article-header .article-meta { flex-wrap: wrap; }
+.article-header .article-meta > span { white-space: nowrap; }
+.article-header .publication-date::before { content: "·"; margin-right: 12px; }
+@media (max-width: 600px) {
+  .article-header .publication-date { flex-basis: 100%; }
+  .article-header .publication-date::before { content: none; }
+}
