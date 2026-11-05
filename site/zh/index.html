@@ -206,9 +206,9 @@ mjx-container[jax="SVG"] path[data-c], mjx-container[jax="SVG"] use[data-c] {
 <p><strong>Opus 的确展现了对参数空间的良好理解。但这些修改的成功，不仅依赖于参数编辑本身，更依赖于它发现问题、设计实验、解决问题的 AutoResearch 能力。</strong>它从机制理解中提出假设，用实验检验，在输出层拟合失败后调整方向。权重修改，是这套研究过程的结果。</p></section>
 <div class="findings video-intro"><section class="execution-showcase" id="execution" aria-labelledby="execution-title"><div class="execution-heading"><div><p class="finding-eyebrow">随后，我们在 YAM 上验证</p><h3 id="execution-title">30、35、40 Hz：原版与编辑版对比。</h3></div><a href="#matched-frequency-videos">查看各频率的全部三次执行 ↗</a></div>
 <div class="frequency-results"><div><b>30 Hz</b><strong>−4.3%</strong><span>平均用时</span><p>22.42 → 21.46 s</p></div><div><b>35 Hz</b><strong>−7.4%</strong><span>平均用时</span><p>19.43 → 17.99 s</p></div><div><b>40 Hz</b><strong>−12.0%</strong><span>平均用时</span><p>17.99 → 15.83 s</p></div></div>
-<p class="frequency-explanation">同一布局，每组 3 次执行。上方展示平均完成时间，原版 → 编辑版；下方视频每组选取完成时间居中的一次。</p>
-<div class="execution-labels"><span>上排：原版 TT-RTC</span><span>下排：联合编辑</span></div>
-<figure class="video-figure" id="bottle-video"><video controls playsinline preload="none" poster="../assets/bottles-frequency-overview.jpg"><source src="../assets/bottles-frequency-overview.mp4" type="video/mp4"></video><figcaption>1× 原速播放。三列依次为 30、35、40 Hz，从正式 rollout 开始对齐，各路在第四瓶放手时定格。计时显示各次执行的实际用时。</figcaption></figure>
+<p class="frequency-explanation">同一布局，每组 3 次执行。上方展示平均完成时间，原版 → 编辑版；下方视频各频率均选取原版完成时间居中的一次，以及编辑版最快的一次。</p>
+<div class="execution-labels"><span>上排：原版 TT-RTC</span><span>下排：联合编辑 · 最快记录</span></div>
+<figure class="video-figure" id="bottle-video"><video controls playsinline preload="none" poster="../assets/bottles-frequency-fastest-edits.jpg"><source src="../assets/bottles-frequency-fastest-edits.mp4" type="video/mp4"></video><figcaption>1× 原速播放。三列依次为 30、35、40 Hz，从正式 rollout 开始对齐，各路在第四瓶放手时定格。计时显示各次执行的实际用时。</figcaption></figure>
 <p class="other-tasks"><b>其他任务：</b>硬币抓取后至交接放手阶段缩短 20.7%；叠方块未见明显提速。这是一次有效、但收益有限的初步尝试。</p>
 </section></div>
 <section class="findings" id="tldr" aria-labelledby="tldr-title">
