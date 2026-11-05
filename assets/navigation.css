@@ -1,3 +1,19 @@
+.toc-group-title {
+  margin: 0 0 12px;
+  padding-left: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.5;
+}
+.toc-group + .toc-group {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+.mobile-toc .toc-group:first-child { margin-top: 18px; }
+.mobile-toc .toc-group .toc { margin-top: 0; }
+
 /* Keep the article outline beside the text, including narrower desktop panes. */
 @media screen and (min-width: 820px) {
   .page-layout {
