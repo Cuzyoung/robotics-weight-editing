@@ -10,3 +10,5 @@
 .matched-comparisons video{display:block;width:100%;height:auto;aspect-ratio:1080/544;background:#141b23}
 .matched-comparisons figcaption{font-size:12px;color:var(--muted);margin-top:10px}
 @media(max-width:600px){.cross-rate-results strong{font-size:29px}.comparison-rate-controls button{flex:1;padding:8px 14px}}
+
+@media(max-width:600px){.video-intro .execution-heading{display:block}.video-intro .execution-heading>a{display:inline-block;margin-top:8px}}
