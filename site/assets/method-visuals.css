@@ -1,0 +1,31 @@
+.rope-demo {border:1px solid #d8e2e3;border-radius:12px;padding:20px 22px 12px;background:#fafcfc;text-align:left}
+.mechanism-heading {display:flex;justify-content:space-between;gap:15px;align-items:center;margin-bottom:14px;font:600 16px/1.5 var(--sans, sans-serif);color:#233e48}
+.mechanism-heading span {font-size:10px;letter-spacing:.12em;color:#74848b;white-space:nowrap}
+.rope-demo-visuals {display:grid;grid-template-columns:minmax(0,2.15fr) minmax(0,1fr);align-items:center;gap:8px}
+.rope-demo svg {width:100%;height:auto;overflow:visible;font-family:Arial,sans-serif;font-size:15px;fill:#314957}
+.rope-demo .axis {stroke:#d4dfe3;fill:none;stroke-width:1.2}
+.base-points circle {fill:#2866a0}.edited-points circle {fill:#24856c}.edited-points .coordinate {font-size:12px;fill:#24856c}
+.clock-ticks path {stroke:#83979f}.clock-ticks text {font-size:13px}
+.unit-circle {stroke:#d7e0e2;fill:none}.base-ray {stroke:#2866a0;stroke-width:3;fill:none}.edit-ray {stroke:#24856c;stroke-width:3;fill:none}.edit-tip {fill:#24856c}
+.angle-arc {stroke:#24856c;stroke-width:1.8;fill:none;stroke-dasharray:3 3}.rotation-value {font-size:14px;fill:#24856c}
+.article-content .rope-demo-note {font-size:12px;line-height:1.65;color:#667e86;margin:12px 0 0}
+.has-rope-demo > .figure-link {display:none}
+@media(max-width:600px){.rope-demo{padding:14px 12px}.mechanism-heading{font-size:14px}.rope-demo-visuals{grid-template-columns:1fr}.rotation-pair{max-width:210px;justify-self:center}.rope-controls{gap:10px}.fixed-clock{display:none}.rope-demo svg{font-size:16px}.article-content .rope-demo-note{font-size:12px}}
+@media print{.rope-demo{display:none!important}.has-rope-demo>.figure-link{display:block}}
+
+.rope-selectors {display:flex;flex-wrap:wrap;gap:12px 24px;margin:8px 0 16px;font:13px/1.6 var(--sans,sans-serif)}
+.rope-selectors select {font:inherit;padding:5px;border:1px solid #b8cecc;border-radius:5px;background:white;color:#233e48}
+.rope-weight-story {border-top:1px solid #d8e2e3;margin-top:16px;padding-top:14px;font-size:14px;line-height:1.7}
+.article-content .rope-weight-story p {font-size:14px;line-height:1.7;margin:8px 0}
+.method-intro {border-left:3px solid #24856c;background:#f4f8f6;padding:18px 24px;margin:24px 0 32px}
+.article-content .method-intro h3 {margin:0 0 16px;font-size:20px}
+.method-intro li {margin-bottom:14px;padding-left:4px}
+.article-content .method-intro p {margin:4px 0;font-size:15px;line-height:1.8}
+.rope-demo [data-position]:has(circle) {transition:opacity .15s}
+
+.rope-demo .context-zone {fill:#edf0f2}
+.rope-demo .context-point {fill:#84919a;font-size:12px}
+.rope-demo .context-boundary {stroke:#b8c5cc;stroke-dasharray:4 4;fill:none}
+.rope-demo .context-label {font-size:13px;fill:#607581}
+.rope-status {display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;border-top:1px solid #e0e8e9;padding-top:12px;font:12px/1.6 var(--sans,sans-serif);color:#607581}
+.rope-status output {color:#24856c;font-variant-numeric:tabular-nums;font-weight:600}

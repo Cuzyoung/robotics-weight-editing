@@ -1,0 +1,30 @@
+[
+  {
+    "name": "continuation",
+    "source": "third_party/XPolicyLab/policy/Pi_05_TrainRTC/openpi/src/openpi/models/continuation.py",
+    "start": 82,
+    "end": 103,
+    "source_sha256": "170149a08ca7ca83d87260e274c15f2f148e506fe2e3a5a85f76ed2186780627"
+  },
+  {
+    "name": "gemma",
+    "source": "third_party/XPolicyLab/policy/Pi_05_TrainRTC/openpi/src/openpi/models/gemma.py",
+    "start": 128,
+    "end": 133,
+    "source_sha256": "f3ebf5d0de1d4c3c39670b93ffeb4ac8ef323ac6e6309147165f5720b0ff5c51"
+  },
+  {
+    "name": "e0",
+    "source": "research/pi05-speed-20261103/scripts/derive_e0_frozen_identity.py",
+    "start": 60,
+    "end": 73,
+    "source_sha256": "16963aab6159663261745088f1f907c05521db7873f78aeae4c667a6320c972f"
+  },
+  {
+    "name": "qk",
+    "source": "research/pi05-speed-20261103/scripts/e2b_qk_rotation.py",
+    "start": 147,
+    "end": 187,
+    "source_sha256": "c62bb042ec657d9e0a65a76f686247381ed9795ec9b9d939fd94318000c253f1"
+  }
+]

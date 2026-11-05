@@ -1,0 +1,25 @@
+# third_party/XPolicyLab/policy/Pi_05_TrainRTC/openpi/src/openpi/models/continuation.py
+# Lines 82–103; verbatim local source excerpt
+
+def sampling_input(x, target, omega, sigma, config):
+    guided = omega * target + (1 - omega) * x
+    time = jnp.broadcast_to(sigma, (x.shape[0],))
+    if config.method == 'train_time_rtc':
+        time = jnp.where(omega[..., 0] > 0, 0., time[:, None])
+        return guided, guided, time
+    if config.method == 'legato':
+        return guided, jnp.concatenate([guided, 1 - omega], axis=-1), time
+    return x, x, time
+
+
+def integrate(predict_velocity, noise, target, omega, config, num_steps):
+    """Uniform Euler updates from the guided state, as in both public samplers."""
+    if num_steps < 1:
+        raise ValueError('num_steps must be positive')
+    if config.method == 'legato' and num_steps != config.num_denoise_steps:
+        raise ValueError('Legato inference grid must match its training target')
+    def step(index, x):
+        sigma = 1. - index / num_steps
+        guided, model_input, time = sampling_input(x, target, omega, sigma, config)
+        return guided - predict_velocity(model_input, time) / num_steps
+    return jax.lax.fori_loop(0, num_steps, step, noise)

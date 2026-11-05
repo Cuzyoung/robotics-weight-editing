@@ -1,0 +1,17 @@
+# research/pi05-speed-20261103/scripts/derive_e0_frozen_identity.py
+# Lines 60–73; verbatim local source excerpt
+
+    sampling = 1. - np.arange(10) / 10
+    guard = np.linspace(0.02, 1.0, 50)
+    c0 = cond(0.)[0]
+    C = cond(np.concatenate([sampling, guard]) if guard_on else sampling)
+    # u: min-norm vector with u.c0 = 1 and C u = 0  (least-squares on the null constraints)
+    A = np.vstack([c0[None], C])
+    rhs = np.zeros(len(A)); rhs[0] = 1
+    u = np.linalg.lstsq(A, rhs, rcond=1e-10)[0]
+    mod0 = c0 @ K + b
+    scale0, shift0 = mod0[:1024], mod0[1024:2048]
+    s_star = -np.linalg.lstsq(W.T, bo, rcond=None)[0]  # s* W + bo = 0
+    d = np.concatenate([-1. - scale0, s_star - shift0, np.zeros(1024)])
+    dK = np.outer(u, d)
+    K2 = K + dK

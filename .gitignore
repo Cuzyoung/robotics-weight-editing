@@ -1,0 +1,18 @@
+__pycache__/
+.venv/
+node_modules/
+**/build/
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+.DS_Store
+
+# Local authoring materials; the remote repository contains the website only.
+/paper/
+/scripts/
+/README.md
+/requirements.txt
+/site/downloads/*-latex.zip

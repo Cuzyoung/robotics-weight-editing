@@ -1,0 +1,16 @@
+.edit-story{border-top:1px solid #dfe5da;margin-top:25px;padding-top:22px;color:#3b4c43}.edit-story h4{font-size:18px;margin:0 0 16px}.edit-story p{font-size:13px;line-height:1.8}.code-comparison{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}.code-comparison.three{grid-template-columns:repeat(3,minmax(0,1fr))}.code-panel{min-width:0;background:#f4f3ee;border:1px solid #e2e2d8;border-radius:7px;overflow:hidden}.code-panel h5{font:600 12px/1.6 var(--sans,sans-serif);padding:12px 15px;margin:0;border-bottom:1px solid #e1e3d8;color:#61645b}.code-panel pre{font:11px/1.9 monospace;padding:14px;margin:0;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:transparent;color:#354b43}.code-after{background:#edf5f0;border-color:#c6dace}.code-after h5{color:#216a55;border-color:#c6dace}.source-links{font-size:11px!important;color:#657567}.source-detail{margin:16px 0}.source-detail summary{cursor:pointer;font-weight:600;font-size:13px;padding:10px 0}.source-detail .code-panel{margin-top:10px}.chart-pair svg{width:100%;height:auto;font:12px var(--sans,sans-serif);fill:#536659}.chart-pair{display:grid;grid-template-columns:1fr 1fr;gap:20px}.chart-pair h5{margin:8px 0;font-size:14px}.diagnostic-charts{margin:26px 0}.diagnostic-charts>p{font-size:12px}.edit-note{border-left:2px solid #c1cdbb;padding-left:12px}
+@media(max-width:800px){.code-comparison,.code-comparison.three,.chart-pair{grid-template-columns:1fr}.edit-story h4{font-size:16px}}
+.code-panel pre code{font:inherit;background:transparent;padding:0;color:inherit}.code-panel pre{font-size:12px}
+
+/* Syntax colors and emphasis are emitted at build time, with no browser dependency. */
+.code-panel pre{font-size:13px;line-height:1.85;color:#253b47}
+.code-panel .syntax-keyword{color:#85409a;font-weight:600}
+.code-panel .syntax-function{color:#1c6395}
+.code-panel .syntax-number{color:#a14d20}
+.code-panel .syntax-comment{color:#687a70;font-style:italic}
+.code-panel .syntax-string{color:#2b7252}
+.code-panel .syntax-operator{color:#9a4a35}
+.code-panel .code-focus{font-weight:750;background:#e7dfc7;box-shadow:3px 0 #e7dfc7,-3px 0 #e7dfc7;border-radius:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.code-after .code-focus{background:#d4e9de;box-shadow:3px 0 #d4e9de,-3px 0 #d4e9de}
+.code-panel .code-focus .syntax-keyword{font-weight:inherit}
+@media(max-width:600px){.code-panel pre{font-size:12px}}
